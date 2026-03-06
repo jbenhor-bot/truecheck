@@ -2,6 +2,58 @@
 
 import { useMemo, useState } from "react";
 
+function getConfidenceLabel(aiProbability, manipulationRisk) {
+  const riskAverage = (aiProbability + manipulationRisk) / 2;
+
+  if (riskAverage >= 70) return "Baixa";
+  if (riskAverage >= 40) return "Média";
+  return "Alta";
+}
+
+function getConfidenceColor(label) {
+  if (label === "Baixa") return "#dc2626";
+  if (label === "Média") return "#d97706";
+  return "#16a34a";
+}
+
+function ProgressBar({ label, value }) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 6,
+          fontSize: 14,
+          fontWeight: 700,
+        }}
+      >
+        <span>{label}</span>
+        <span>{value}%</span>
+      </div>
+
+      <div
+        style={{
+          width: "100%",
+          height: 12,
+          background: "#e5e7eb",
+          borderRadius: 999,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${value}%`,
+            height: "100%",
+            background: "#111827",
+            borderRadius: 999,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [mode, setMode] = useState("");
 
@@ -10,8 +62,10 @@ export default function Home() {
 
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
-  const [imageResult, setImageResult] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
+
+  const [imageReport, setImageReport] = useState(null);
+  const [imageMessage, setImageMessage] = useState("");
 
   const [videoFile, setVideoFile] = useState(null);
   const [videoResult, setVideoResult] = useState("");
@@ -28,8 +82,9 @@ export default function Home() {
     setTextResult("");
     setImageFile(null);
     setImageUrl("");
-    setImageResult("");
     setImageLoading(false);
+    setImageReport(null);
+    setImageMessage("");
     setVideoFile(null);
     setVideoResult("");
   }
@@ -39,25 +94,30 @@ export default function Home() {
       setTextResult("Cole um texto para verificar.");
       return;
     }
-    setTextResult("Recebido ✅ Próximo passo: checagem real com IA e fontes confiáveis.");
+
+    setTextResult(
+      "Recebido ✅ Próximo passo: checagem real com IA e fontes confiáveis."
+    );
   }
 
   async function analyzeImage() {
+    setImageReport(null);
+    setImageMessage("");
+
     if (imageFile) {
-      setImageResult(
+      setImageMessage(
         "Upload detectado ✅ Próximo passo: conectar o envio do arquivo para análise real."
       );
       return;
     }
 
     if (!imageUrl.trim()) {
-      setImageResult("Envie uma imagem ou cole a URL de uma imagem.");
+      setImageMessage("Envie uma imagem ou cole a URL de uma imagem.");
       return;
     }
 
     try {
       setImageLoading(true);
-      setImageResult("");
 
       const response = await fetch("/api/analyze-image", {
         method: "POST",
@@ -70,20 +130,25 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        setImageResult(data.error || "Erro ao analisar a imagem.");
+        setImageMessage(data.error || "Erro ao analisar a imagem.");
         return;
       }
 
-      setImageResult(
-        `Resultado da análise:\n\n` +
-          `• Origem analisada: ${data.sourceType}\n` +
-          `• Probabilidade de geração por IA: ${data.aiProbability}%\n` +
-          `• Risco de manipulação/edição: ${data.manipulationRisk}%\n\n` +
-          `Sinais observados:\n- ${data.observedSigns[0]}\n- ${data.observedSigns[1]}\n\n` +
-          `Recomendação: ${data.recommendation}`
+      const confidenceLabel = getConfidenceLabel(
+        data.aiProbability,
+        data.manipulationRisk
       );
+
+      setImageReport({
+        sourceType: data.sourceType,
+        aiProbability: data.aiProbability,
+        manipulationRisk: data.manipulationRisk,
+        observedSigns: data.observedSigns,
+        recommendation: data.recommendation,
+        confidenceLabel,
+      });
     } catch (error) {
-      setImageResult("Erro de conexão ao analisar a imagem.");
+      setImageMessage("Erro de conexão ao analisar a imagem.");
     } finally {
       setImageLoading(false);
     }
@@ -91,7 +156,7 @@ export default function Home() {
 
   function openReverseSearch() {
     if (!imageUrl.trim()) {
-      setImageResult(
+      setImageMessage(
         "Para busca na internet, use uma URL de imagem. O próximo passo será suportar arquivo enviado também."
       );
       return;
@@ -107,6 +172,7 @@ export default function Home() {
       setVideoResult("Selecione um vídeo para analisar.");
       return;
     }
+
     setVideoResult(
       "Vídeo recebido ✅ Próximo passo: extrair frames e detectar indícios de deepfake/manipulação."
     );
@@ -114,10 +180,10 @@ export default function Home() {
 
   const cardStyle = {
     width: "100%",
-    maxWidth: 760,
+    maxWidth: 820,
     background: "white",
     padding: 26,
-    borderRadius: 14,
+    borderRadius: 16,
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   };
 
@@ -254,7 +320,8 @@ export default function Home() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   setImageFile(file || null);
-                  setImageResult("");
+                  setImageReport(null);
+                  setImageMessage("");
                 }}
               />
             </div>
@@ -264,7 +331,8 @@ export default function Home() {
               value={imageUrl}
               onChange={(e) => {
                 setImageUrl(e.target.value);
-                setImageResult("");
+                setImageReport(null);
+                setImageMessage("");
               }}
               placeholder="Ou cole aqui a URL da imagem..."
               style={{
@@ -306,7 +374,8 @@ export default function Home() {
                 onClick={() => {
                   setImageFile(null);
                   setImageUrl("");
-                  setImageResult("");
+                  setImageReport(null);
+                  setImageMessage("");
                   setImageLoading(false);
                 }}
                 style={btnSecondary}
@@ -315,20 +384,89 @@ export default function Home() {
               </button>
             </div>
 
-            {imageResult && (
-              <pre
+            {imageMessage && (
+              <div
                 style={{
                   marginTop: 14,
                   padding: 12,
                   borderRadius: 12,
                   background: "#f5f7fb",
                   border: "1px solid #e7eaf3",
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "inherit",
                 }}
               >
-                {imageResult}
-              </pre>
+                {imageMessage}
+              </div>
+            )}
+
+            {imageReport && (
+              <div
+                style={{
+                  marginTop: 18,
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 16,
+                  padding: 18,
+                  background: "#fcfcfd",
+                }}
+              >
+                <h3 style={{ marginTop: 0, marginBottom: 10 }}>
+                  Resultado da Verificação
+                </h3>
+
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "#f3f4f6",
+                    fontWeight: 700,
+                    color: getConfidenceColor(imageReport.confidenceLabel),
+                    border: `1px solid ${getConfidenceColor(imageReport.confidenceLabel)}`,
+                  }}
+                >
+                  Confiabilidade da imagem: {imageReport.confidenceLabel}
+                </div>
+
+                <div style={{ marginTop: 16 }}>
+                  <ProgressBar
+                    label="Probabilidade de geração por IA"
+                    value={imageReport.aiProbability}
+                  />
+                  <ProgressBar
+                    label="Risco de manipulação/edição"
+                    value={imageReport.manipulationRisk}
+                  />
+                </div>
+
+                <div style={{ marginTop: 18 }}>
+                  <h4 style={{ marginBottom: 8 }}>Sinais detectados</h4>
+                  <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.7 }}>
+                    {imageReport.observedSigns.map((sign, index) => (
+                      <li key={index}>{sign}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div style={{ marginTop: 18 }}>
+                  <h4 style={{ marginBottom: 8 }}>Contexto e verificação</h4>
+                  <div style={{ color: "#444", lineHeight: 1.6 }}>
+                    <div>Origem analisada: <b>{imageReport.sourceType}</b></div>
+                    <div>Busca reversa disponível para investigação complementar.</div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f5f7fb",
+                    border: "1px solid #e7eaf3",
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
+                  <div style={{ lineHeight: 1.6 }}>{imageReport.recommendation}</div>
+                </div>
+              </div>
             )}
           </>
         )}
