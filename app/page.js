@@ -123,4 +123,234 @@ export default function Home() {
       }}
     >
       <div style={cardStyle}>
-        <div style={{ display: "flex
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 40 }}>TrueCheck</h1>
+            <p style={{ marginTop: 8, color: "#444" }}>
+              Escolha o tipo de verificação e receba uma análise inicial.
+            </p>
+          </div>
+
+          <button onClick={resetAll} style={btnSecondary} title="Voltar ao início">
+            Início
+          </button>
+        </div>
+
+        {/* Seleção de modo */}
+        {!mode && (
+          <>
+            <p style={{ marginTop: 18, marginBottom: 10, fontWeight: 700 }}>
+              Escolha o tipo de verificação
+            </p>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setMode("text")} style={btnPrimary}>
+                Verificar Texto
+              </button>
+
+              <button onClick={() => setMode("image")} style={btnPrimary}>
+                Verificar Imagem
+              </button>
+
+              <button onClick={() => setMode("video")} style={btnPrimary}>
+                Verificar Vídeo
+              </button>
+            </div>
+
+            <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
+              Dica: começaremos com análises iniciais e, em seguida, conectamos IA + fontes.
+            </p>
+          </>
+        )}
+
+        {/* TEXTO */}
+        {mode === "text" && (
+          <>
+            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Texto</h2>
+
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Cole aqui o texto ou notícia..."
+              rows={8}
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #ddd",
+                outline: "none",
+                resize: "vertical",
+                fontSize: 15,
+                lineHeight: 1.5,
+              }}
+            />
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button onClick={analyzeText} style={btnPrimary}>
+                Verificar
+              </button>
+              <button
+                onClick={() => {
+                  setText("");
+                  setTextResult("");
+                }}
+                style={btnSecondary}
+              >
+                Limpar
+              </button>
+            </div>
+
+            {textResult && (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#f5f7fb",
+                  border: "1px solid #e7eaf3",
+                }}
+              >
+                <b>Resultado:</b> {textResult}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* IMAGEM */}
+        {mode === "image" && (
+          <>
+            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Imagem</h2>
+
+            <p style={{ marginTop: 0, color: "#444" }}>
+              Envie uma imagem. O TrueCheck vai avaliar indícios de{" "}
+              <b>geração por IA</b> e <b>manipulação/edição</b>.
+            </p>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setImageFile(file || null);
+                setImageResult("");
+              }}
+            />
+
+            {imageFile && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 13, color: "#666" }}>
+                  Arquivo: <b>{imageFile.name}</b>
+                </div>
+
+                {imagePreviewUrl && (
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Prévia da imagem"
+                    style={{
+                      marginTop: 10,
+                      width: "100%",
+                      maxHeight: 360,
+                      objectFit: "contain",
+                      borderRadius: 12,
+                      border: "1px solid #eee",
+                      background: "#fafafa",
+                    }}
+                  />
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button onClick={analyzeImage} style={btnPrimary}>
+                Analisar Imagem
+              </button>
+
+              <button
+                onClick={() => {
+                  setImageFile(null);
+                  setImageResult("");
+                }}
+                style={btnSecondary}
+              >
+                Limpar
+              </button>
+            </div>
+
+            {imageResult && (
+              <pre
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#f5f7fb",
+                  border: "1px solid #e7eaf3",
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "inherit",
+                }}
+              >
+                {imageResult}
+              </pre>
+            )}
+          </>
+        )}
+
+        {/* VÍDEO */}
+        {mode === "video" && (
+          <>
+            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Vídeo</h2>
+
+            <p style={{ marginTop: 0, color: "#444" }}>
+              Envie um vídeo para análise inicial (deepfake/manipulação).
+            </p>
+
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setVideoFile(file || null);
+                setVideoResult("");
+              }}
+            />
+
+            {videoFile && (
+              <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
+                Arquivo: <b>{videoFile.name}</b>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button onClick={analyzeVideo} style={btnPrimary}>
+                Analisar Vídeo
+              </button>
+
+              <button
+                onClick={() => {
+                  setVideoFile(null);
+                  setVideoResult("");
+                }}
+                style={btnSecondary}
+              >
+                Limpar
+              </button>
+            </div>
+
+            {videoResult && (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#f5f7fb",
+                  border: "1px solid #e7eaf3",
+                }}
+              >
+                <b>Resultado:</b> {videoResult}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
