@@ -11,6 +11,7 @@ export default function Home() {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [imageResult, setImageResult] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
 
   const [videoFile, setVideoFile] = useState(null);
   const [videoResult, setVideoResult] = useState("");
@@ -28,6 +29,7 @@ export default function Home() {
     setImageFile(null);
     setImageUrl("");
     setImageResult("");
+    setImageLoading(false);
     setVideoFile(null);
     setVideoResult("");
   }
@@ -40,36 +42,51 @@ export default function Home() {
     setTextResult("Recebido ✅ Próximo passo: checagem real com IA e fontes confiáveis.");
   }
 
-  function analyzeImage() {
-    if (!imageFile && !imageUrl.trim()) {
+  async function analyzeImage() {
+    if (imageFile) {
+      setImageResult(
+        "Upload detectado ✅ Próximo passo: conectar o envio do arquivo para análise real."
+      );
+      return;
+    }
+
+    if (!imageUrl.trim()) {
       setImageResult("Envie uma imagem ou cole a URL de uma imagem.");
       return;
     }
 
-    const aiProbability = Math.floor(35 + Math.random() * 55);
-    const manipulationRisk = Math.floor(10 + Math.random() * 70);
+    try {
+      setImageLoading(true);
+      setImageResult("");
 
-    const signs = [
-      "padrões repetitivos incomuns",
-      "bordas com artefatos",
-      "texturas com inconsistência",
-      "compressão irregular",
-      "sombras/iluminação suspeitas",
-    ];
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ imageUrl })
+      });
 
-    const s1 = signs[Math.floor(Math.random() * signs.length)];
-    const s2 = signs[Math.floor(Math.random() * signs.length)];
+      const data = await response.json();
 
-    const sourceType = imageUrl.trim() ? "URL da imagem" : "arquivo enviado";
+      if (!response.ok) {
+        setImageResult(data.error || "Erro ao analisar a imagem.");
+        return;
+      }
 
-    setImageResult(
-      `Resultado (prévia):\n\n` +
-        `• Origem analisada: ${sourceType}\n` +
-        `• Probabilidade de geração por IA: ${aiProbability}%\n` +
-        `• Risco de manipulação/edição: ${manipulationRisk}%\n\n` +
-        `Sinais observados:\n- ${s1}\n- ${s2}\n\n` +
-        `Recomendação: compare com a fonte original e procure versões antigas da imagem.`
-    );
+      setImageResult(
+        `Resultado da análise:\n\n` +
+          `• Origem analisada: ${data.sourceType}\n` +
+          `• Probabilidade de geração por IA: ${data.aiProbability}%\n` +
+          `• Risco de manipulação/edição: ${data.manipulationRisk}%\n\n` +
+          `Sinais observados:\n- ${data.observedSigns[0]}\n- ${data.observedSigns[1]}\n\n` +
+          `Recomendação: ${data.recommendation}`
+      );
+    } catch (error) {
+      setImageResult("Erro de conexão ao analisar a imagem.");
+    } finally {
+      setImageLoading(false);
+    }
   }
 
   function analyzeVideo() {
@@ -77,7 +94,9 @@ export default function Home() {
       setVideoResult("Selecione um vídeo para analisar.");
       return;
     }
-    setVideoResult("Vídeo recebido ✅ Próximo passo: extrair frames e detectar indícios de deepfake/manipulação.");
+    setVideoResult(
+      "Vídeo recebido ✅ Próximo passo: extrair frames e detectar indícios de deepfake/manipulação."
+    );
   }
 
   const cardStyle = {
@@ -263,7 +282,7 @@ export default function Home() {
 
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
               <button onClick={analyzeImage} style={btnPrimary}>
-                Analisar Imagem
+                {imageLoading ? "Analisando..." : "Analisar Imagem"}
               </button>
 
               <button
@@ -271,6 +290,7 @@ export default function Home() {
                   setImageFile(null);
                   setImageUrl("");
                   setImageResult("");
+                  setImageLoading(false);
                 }}
                 style={btnSecondary}
               >
