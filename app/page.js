@@ -89,6 +89,19 @@ export default function Home() {
     }
   }
 
+  function openReverseSearch() {
+    if (!imageUrl.trim()) {
+      setImageResult(
+        "Para busca na internet, use uma URL de imagem. O próximo passo será suportar arquivo enviado também."
+      );
+      return;
+    }
+
+    const encodedUrl = encodeURIComponent(imageUrl.trim());
+    const googleLensUrl = `https://lens.google.com/uploadbyurl?url=${encodedUrl}`;
+    window.open(googleLensUrl, "_blank");
+  }
+
   function analyzeVideo() {
     if (!videoFile) {
       setVideoResult("Selecione um vídeo para analisar.");
@@ -280,9 +293,13 @@ export default function Home() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
               <button onClick={analyzeImage} style={btnPrimary}>
                 {imageLoading ? "Analisando..." : "Analisar Imagem"}
+              </button>
+
+              <button onClick={openReverseSearch} style={btnSecondary}>
+                🔎 Buscar esta imagem na internet
               </button>
 
               <button
