@@ -68,6 +68,8 @@ export default function Home() {
 
   const [videoFile, setVideoFile] = useState(null);
   const [videoResult, setVideoResult] = useState(null);
+  const [videoFrames, setVideoFrames] = useState([]);
+  const [videoLoading, setVideoLoading] = useState(false);
 
   const imagePreviewUrl = useMemo(() => {
     if (imageFile) return URL.createObjectURL(imageFile);
@@ -86,6 +88,8 @@ export default function Home() {
     setImageMessage("");
     setVideoFile(null);
     setVideoResult(null);
+    setVideoFrames([]);
+    setVideoLoading(false);
   }
 
   function analyzeText() {
@@ -307,73 +311,166 @@ export default function Home() {
     window.open(googleLensUrl, "_blank");
   }
 
-  function analyzeVideo() {
+  function captureFrame(video, canvas, timeInSeconds) {
+    return new Promise((resolve) => {
+      const handleSeeked = () => {
+        const context = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frameUrl = canvas.toDataURL("image/jpeg", 0.8);
+        resolve(frameUrl);
+      };
+
+      video.currentTime = Math.min(
+        Math.max(timeInSeconds, 0),
+        Math.max(video.duration - 0.1, 0)
+      );
+      video.addEventListener("seeked", handleSeeked, { once: true });
+    });
+  }
+
+  async function extractVideoFrames(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      const canvas = document.createElement("canvas");
+      const objectUrl = URL.createObjectURL(file);
+
+      video.preload = "metadata";
+      video.src = objectUrl;
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadedmetadata = async () => {
+        try {
+          const duration = video.duration || 1;
+          const captureTimes = [
+            duration * 0.2,
+            duration * 0.5,
+            duration * 0.8,
+          ];
+
+          const frames = [];
+
+          for (const time of captureTimes) {
+            const frame = await captureFrame(video, canvas, time);
+            frames.push(frame);
+          }
+
+          URL.revokeObjectURL(objectUrl);
+          resolve({
+            duration,
+            frames,
+          });
+        } catch (error) {
+          URL.revokeObjectURL(objectUrl);
+          reject(error);
+        }
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Erro ao carregar vídeo."));
+      };
+    });
+  }
+
+  async function analyzeVideo() {
     if (!videoFile) {
       setVideoResult({
         classification: "Nenhum vídeo selecionado.",
         fileName: "-",
         fileSize: "0 MB",
+        duration: "-",
         observation: "Selecione um vídeo para iniciar a triagem.",
-        detectedSigns: [
-          "Sem arquivo enviado para análise inicial.",
-        ],
+        detectedSigns: ["Sem arquivo enviado para análise inicial."],
         nextStep: "Enviar um vídeo para continuar.",
       });
+      setVideoFrames([]);
       return;
     }
 
-    const fileName = videoFile.name;
-    const lowerName = fileName.toLowerCase();
-    const fileSizeMb = (videoFile.size / (1024 * 1024)).toFixed(2);
+    try {
+      setVideoLoading(true);
+      setVideoFrames([]);
 
-    let classification = "Vídeo recebido para triagem inicial.";
-    let observation =
-      "O arquivo pode seguir para extração de frames e análise de consistência visual.";
-    let detectedSigns = [
-      "Arquivo carregado com sucesso no protótipo.",
-      "Próxima etapa recomendada: extração de frames.",
-      "Necessária checagem de contexto e origem do vídeo.",
-    ];
-    let nextStep =
-      "Próximo passo: analisar frames, áudio e sinais de manipulação/deepfake.";
+      const extracted = await extractVideoFrames(videoFile);
 
-    if (
-      lowerName.includes("deepfake") ||
-      lowerName.includes("fake") ||
-      lowerName.includes("ai") ||
-      lowerName.includes("edited")
-    ) {
-      classification = "Vídeo com indícios que merecem atenção reforçada.";
-      observation =
-        "O nome do arquivo sugere possível edição, geração sintética ou manipulação.";
-      detectedSigns = [
-        "Nome do arquivo sugere possível conteúdo manipulado.",
-        "Recomendado verificar origem, data de publicação e frames-chave.",
-        "Análise aprofundada deve incluir sincronização facial e consistência visual.",
+      const fileName = videoFile.name;
+      const lowerName = fileName.toLowerCase();
+      const fileSizeMb = (videoFile.size / (1024 * 1024)).toFixed(2);
+      const durationSeconds = extracted.duration.toFixed(2);
+
+      let classification = "Vídeo recebido para triagem inicial.";
+      let observation =
+        "Frames automáticos foram extraídos para inspeção visual preliminar.";
+      let detectedSigns = [
+        "Frames capturados em diferentes momentos do vídeo.",
+        "Próxima etapa recomendada: comparar rosto, fundo, cortes e consistência visual.",
+        "Necessária checagem de origem, contexto e publicação.",
       ];
-      nextStep =
-        "Próximo passo: rodar análise aprofundada de frames e possíveis sinais de deepfake.";
-    } else if (videoFile.size > 50 * 1024 * 1024) {
-      classification = "Vídeo grande recebido para análise técnica.";
-      observation =
-        "Arquivos maiores podem conter mais detalhes úteis para uma investigação aprofundada.";
-      detectedSigns = [
-        "Tamanho do arquivo pode preservar qualidade visual relevante.",
-        "Extração de frames pode revelar inconsistências discretas.",
-        "Vale analisar também compressão, cortes e histórico de publicação.",
-      ];
-      nextStep =
-        "Próximo passo: processar frames e examinar cortes, compressão e contexto.";
+      let nextStep =
+        "Próximo passo: analisar frames, áudio e sinais de manipulação/deepfake.";
+
+      if (
+        lowerName.includes("deepfake") ||
+        lowerName.includes("fake") ||
+        lowerName.includes("ai") ||
+        lowerName.includes("edited")
+      ) {
+        classification = "Vídeo com indícios que merecem atenção reforçada.";
+        observation =
+          "O nome do arquivo sugere possível edição, geração sintética ou manipulação.";
+        detectedSigns = [
+          "Nome do arquivo sugere possível conteúdo manipulado.",
+          "Frames automáticos já estão prontos para inspeção visual.",
+          "Análise aprofundada deve incluir sincronização facial e consistência entre cenas.",
+        ];
+        nextStep =
+          "Próximo passo: rodar análise aprofundada de frames e possíveis sinais de deepfake.";
+      } else if (videoFile.size > 50 * 1024 * 1024) {
+        classification = "Vídeo grande recebido para análise técnica.";
+        observation =
+          "Arquivos maiores podem preservar mais detalhes úteis para investigação.";
+        detectedSigns = [
+          "Frames extraídos de um arquivo com mais detalhes visuais.",
+          "Vale analisar compressão, cortes e continuidade entre cenas.",
+          "Contexto de publicação continua sendo essencial.",
+        ];
+        nextStep =
+          "Próximo passo: processar frames e examinar cortes, compressão e contexto.";
+      }
+
+      setVideoFrames(extracted.frames);
+
+      setVideoResult({
+        classification,
+        fileName,
+        fileSize: `${fileSizeMb} MB`,
+        duration: `${durationSeconds} s`,
+        observation,
+        detectedSigns,
+        nextStep,
+      });
+    } catch (error) {
+      setVideoResult({
+        classification: "Não foi possível extrair frames do vídeo.",
+        fileName: videoFile.name,
+        fileSize: `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`,
+        duration: "-",
+        observation:
+          "O navegador encontrou dificuldade para processar esse arquivo no momento.",
+        detectedSigns: [
+          "Falha na leitura automática do vídeo.",
+          "Formato ou codificação podem exigir tratamento adicional.",
+        ],
+        nextStep:
+          "Tentar outro vídeo MP4 ou implementar processamento mais robusto no backend.",
+      });
+      setVideoFrames([]);
+    } finally {
+      setVideoLoading(false);
     }
-
-    setVideoResult({
-      classification,
-      fileName,
-      fileSize: `${fileSizeMb} MB`,
-      observation,
-      detectedSigns,
-      nextStep,
-    });
   }
 
   const cardStyle = {
@@ -795,25 +892,75 @@ export default function Home() {
                   const file = e.target.files?.[0];
                   setVideoFile(file || null);
                   setVideoResult(null);
+                  setVideoFrames([]);
                 }}
               />
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button onClick={analyzeVideo} style={btnPrimary}>
-                Analisar Vídeo
+                {videoLoading ? "Extraindo frames..." : "Analisar Vídeo"}
               </button>
 
               <button
                 onClick={() => {
                   setVideoFile(null);
                   setVideoResult(null);
+                  setVideoFrames([]);
+                  setVideoLoading(false);
                 }}
                 style={btnSecondary}
               >
                 Limpar
               </button>
             </div>
+
+            {videoFrames.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+                  Frames extraídos automaticamente
+                </h3>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {videoFrames.map((frame, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 14,
+                        padding: 10,
+                        background: "#fafafa",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          marginBottom: 8,
+                        }}
+                      >
+                        Frame {index + 1}
+                      </div>
+                      <img
+                        src={frame}
+                        alt={`Frame ${index + 1}`}
+                        style={{
+                          width: "100%",
+                          borderRadius: 10,
+                          display: "block",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {videoResult && (
               <div
@@ -840,6 +987,10 @@ export default function Home() {
 
                 <div>
                   <b>Tamanho:</b> {videoResult.fileSize}
+                </div>
+
+                <div>
+                  <b>Duração estimada:</b> {videoResult.duration}
                 </div>
 
                 <div>
