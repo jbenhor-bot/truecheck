@@ -58,7 +58,7 @@ export default function Home() {
   const [mode, setMode] = useState("");
 
   const [text, setText] = useState("");
-  const [textResult, setTextResult] = useState("");
+  const [textResult, setTextResult] = useState(null);
 
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -79,7 +79,7 @@ export default function Home() {
   function resetAll() {
     setMode("");
     setText("");
-    setTextResult("");
+    setTextResult(null);
     setImageFile(null);
     setImageUrl("");
     setImageLoading(false);
@@ -90,14 +90,108 @@ export default function Home() {
   }
 
   function analyzeText() {
-    if (!text.trim()) {
-      setTextResult("Cole um texto para verificar.");
+    const conteudo = text.trim();
+
+    if (!conteudo) {
+      setTextResult({
+        status: "empty",
+        classification: "Nenhum texto inserido.",
+        size: 0,
+        sentences: 0,
+        observation: "Cole um texto para iniciar a análise.",
+        nextStep: "Adicionar conteúdo para triagem inicial.",
+      });
       return;
     }
 
-    setTextResult(
-      "Recebido ✅ Próximo passo: checagem real com IA e fontes confiáveis."
-    );
+    const textoLower = conteudo.toLowerCase();
+    const tamanho = conteudo.length;
+    const frases = conteudo
+      .split(/[.!?]+/)
+      .filter((frase) => frase.trim() !== "").length;
+
+    const palavrasForte = [
+      "confirmado",
+      "prova",
+      "comprovado",
+      "garante",
+      "certeza",
+      "denúncia",
+      "fraude",
+      "crime",
+      "narcoterrorismo",
+      "militares",
+      "governo",
+      "ataque",
+      "ordem",
+      "investigação",
+      "guerra",
+      "israel",
+      "irã",
+      "trump",
+    ];
+
+    const palavrasOpiniao = [
+      "acho",
+      "opinião",
+      "parece",
+      "talvez",
+      "acredito",
+      "imagino",
+      "sinto",
+    ];
+
+    let encontrouFato = false;
+    let encontrouOpiniao = false;
+
+    for (const palavra of palavrasForte) {
+      if (textoLower.includes(palavra)) {
+        encontrouFato = true;
+        break;
+      }
+    }
+
+    for (const palavra of palavrasOpiniao) {
+      if (textoLower.includes(palavra)) {
+        encontrouOpiniao = true;
+        break;
+      }
+    }
+
+    let classification = "";
+    let observation = "";
+    let nextStep = "";
+
+    if (tamanho < 40) {
+      classification = "Texto muito curto para análise inicial.";
+      observation =
+        "Há pouco conteúdo para identificar uma afirmação verificável.";
+      nextStep =
+        "Adicionar mais contexto, nomes, local, data ou descrição do fato.";
+    } else if (encontrouOpiniao && !encontrouFato) {
+      classification = "Conteúdo com traços de opinião.";
+      observation = "O texto parece mais opinativo do que factual.";
+      nextStep = "Separar opinião de afirmações que possam ser checadas.";
+    } else if (encontrouFato || frases >= 2) {
+      classification = "Possível afirmação verificável detectada.";
+      observation =
+        "O texto contém elementos que podem ser conferidos em fontes externas.";
+      nextStep = "Próximo passo: checagem real com IA e fontes confiáveis.";
+    } else {
+      classification = "Conteúdo recebido para triagem inicial.";
+      observation =
+        "O sistema identificou texto suficiente para análise preliminar.";
+      nextStep = "Aprofundar a checagem com contexto e fontes.";
+    }
+
+    setTextResult({
+      status: "ok",
+      classification,
+      size: tamanho,
+      sentences: frases,
+      observation,
+      nextStep,
+    });
   }
 
   async function analyzeImage() {
@@ -122,9 +216,9 @@ export default function Home() {
       const response = await fetch("/api/analyze-image", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageUrl })
+        body: JSON.stringify({ imageUrl }),
       });
 
       const data = await response.json();
@@ -193,6 +287,8 @@ export default function Home() {
     border: "none",
     cursor: "pointer",
     fontWeight: 700,
+    background: "#111827",
+    color: "white",
   };
 
   const btnSecondary = {
@@ -218,7 +314,9 @@ export default function Home() {
       }}
     >
       <div style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div
+          style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+        >
           <div>
             <h1 style={{ margin: 0, fontSize: 40 }}>TrueCheck</h1>
             <p style={{ marginTop: 8, color: "#444" }}>
@@ -250,7 +348,8 @@ export default function Home() {
             </div>
 
             <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
-              Dica: começaremos com análises iniciais e depois conectamos IA + fontes.
+              Dica: começaremos com análises iniciais e depois conectamos IA +
+              fontes.
             </p>
           </>
         )}
@@ -281,7 +380,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   setText("");
-                  setTextResult("");
+                  setTextResult(null);
                 }}
                 style={btnSecondary}
               >
@@ -293,13 +392,36 @@ export default function Home() {
               <div
                 style={{
                   marginTop: 14,
-                  padding: 12,
+                  padding: 16,
                   borderRadius: 12,
                   background: "#f5f7fb",
                   border: "1px solid #e7eaf3",
+                  lineHeight: 1.7,
                 }}
               >
-                <b>Resultado:</b> {textResult}
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                  Resultado da análise
+                </div>
+
+                <div>
+                  <b>Classificação:</b> {textResult.classification}
+                </div>
+
+                <div>
+                  <b>Tamanho do texto:</b> {textResult.size} caracteres
+                </div>
+
+                <div>
+                  <b>Frases identificadas:</b> {textResult.sentences}
+                </div>
+
+                <div>
+                  <b>Observação:</b> {textResult.observation}
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <b>Próximo passo:</b> {textResult.nextStep}
+                </div>
               </div>
             )}
           </>
@@ -307,10 +429,13 @@ export default function Home() {
 
         {mode === "image" && (
           <>
-            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Imagem</h2>
+            <h2 style={{ marginTop: 18, marginBottom: 10 }}>
+              Verificar Imagem
+            </h2>
 
             <p style={{ marginTop: 0, color: "#444" }}>
-              Envie uma imagem ou cole a URL de uma imagem para analisar indícios de <b>IA</b> e <b>manipulação</b>.
+              Envie uma imagem ou cole a URL de uma imagem para analisar
+              indícios de <b>IA</b> e <b>manipulação</b>.
             </p>
 
             <div style={{ marginBottom: 12 }}>
@@ -361,7 +486,9 @@ export default function Home() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+            <div
+              style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}
+            >
               <button onClick={analyzeImage} style={btnPrimary}>
                 {imageLoading ? "Analisando..." : "Analisar Imagem"}
               </button>
@@ -420,7 +547,9 @@ export default function Home() {
                     background: "#f3f4f6",
                     fontWeight: 700,
                     color: getConfidenceColor(imageReport.confidenceLabel),
-                    border: `1px solid ${getConfidenceColor(imageReport.confidenceLabel)}`,
+                    border: `1px solid ${getConfidenceColor(
+                      imageReport.confidenceLabel
+                    )}`,
                   }}
                 >
                   Confiabilidade da imagem: {imageReport.confidenceLabel}
@@ -449,8 +578,12 @@ export default function Home() {
                 <div style={{ marginTop: 18 }}>
                   <h4 style={{ marginBottom: 8 }}>Contexto e verificação</h4>
                   <div style={{ color: "#444", lineHeight: 1.6 }}>
-                    <div>Origem analisada: <b>{imageReport.sourceType}</b></div>
-                    <div>Busca reversa disponível para investigação complementar.</div>
+                    <div>
+                      Origem analisada: <b>{imageReport.sourceType}</b>
+                    </div>
+                    <div>
+                      Busca reversa disponível para investigação complementar.
+                    </div>
                   </div>
                 </div>
 
@@ -464,7 +597,9 @@ export default function Home() {
                   }}
                 >
                   <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
-                  <div style={{ lineHeight: 1.6 }}>{imageReport.recommendation}</div>
+                  <div style={{ lineHeight: 1.6 }}>
+                    {imageReport.recommendation}
+                  </div>
                 </div>
               </div>
             )}
