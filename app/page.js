@@ -63,7 +63,6 @@ export default function Home() {
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [imageLoading, setImageLoading] = useState(false);
-
   const [imageReport, setImageReport] = useState(null);
   const [imageMessage, setImageMessage] = useState("");
 
@@ -200,7 +199,7 @@ export default function Home() {
 
     if (imageFile) {
       setImageMessage(
-        "Upload detectado ✅ Próximo passo: conectar o envio do arquivo para análise real."
+        "Arquivo recebido ✅ Próximo passo: conectar o envio real da imagem para análise automática."
       );
       return;
     }
@@ -251,7 +250,7 @@ export default function Home() {
   function openReverseSearch() {
     if (!imageUrl.trim()) {
       setImageMessage(
-        "Para busca na internet, use uma URL de imagem. O próximo passo será suportar arquivo enviado também."
+        "Para busca na internet, use uma URL de imagem. Depois vamos suportar melhor o arquivo enviado também."
       );
       return;
     }
@@ -297,6 +296,13 @@ export default function Home() {
     border: "1px solid #ddd",
     background: "#fff",
     cursor: "pointer",
+    fontWeight: 700,
+  };
+
+  const sectionTitleStyle = {
+    marginTop: 18,
+    marginBottom: 10,
+    fontSize: 18,
     fontWeight: 700,
   };
 
@@ -356,7 +362,7 @@ export default function Home() {
 
         {mode === "text" && (
           <>
-            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Texto</h2>
+            <h2 style={sectionTitleStyle}>Verificar Texto</h2>
 
             <textarea
               value={text}
@@ -429,16 +435,26 @@ export default function Home() {
 
         {mode === "image" && (
           <>
-            <h2 style={{ marginTop: 18, marginBottom: 10 }}>
-              Verificar Imagem
-            </h2>
+            <h2 style={sectionTitleStyle}>Verificar Imagem</h2>
 
-            <p style={{ marginTop: 0, color: "#444" }}>
-              Envie uma imagem ou cole a URL de uma imagem para analisar
-              indícios de <b>IA</b> e <b>manipulação</b>.
+            <p style={{ marginTop: 0, color: "#444", lineHeight: 1.6 }}>
+              Envie uma imagem ou cole a URL para analisar indícios de{" "}
+              <b>geração por IA</b> e <b>manipulação digital</b>.
             </p>
 
-            <div style={{ marginBottom: 12 }}>
+            <div
+              style={{
+                marginTop: 12,
+                border: "2px dashed #d1d5db",
+                borderRadius: 16,
+                padding: 18,
+                background: "#fafafa",
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>
+                Enviar imagem
+              </div>
+
               <input
                 type="file"
                 accept="image/*"
@@ -449,52 +465,72 @@ export default function Home() {
                   setImageMessage("");
                 }}
               />
+
+              <div style={{ marginTop: 14, fontWeight: 700 }}>
+                ou cole a URL da imagem
+              </div>
+
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  setImageReport(null);
+                  setImageMessage("");
+                }}
+                placeholder="https://exemplo.com/minha-imagem.jpg"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid #ddd",
+                  fontSize: 15,
+                  marginTop: 10,
+                }}
+              />
             </div>
 
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => {
-                setImageUrl(e.target.value);
-                setImageReport(null);
-                setImageMessage("");
-              }}
-              placeholder="Ou cole aqui a URL da imagem..."
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #ddd",
-                fontSize: 15,
-              }}
-            />
-
             {imagePreviewUrl && (
-              <div style={{ marginTop: 12 }}>
-                <img
-                  src={imagePreviewUrl}
-                  alt="Prévia da imagem"
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                  Prévia da imagem
+                </div>
+                <div
                   style={{
-                    width: "100%",
-                    maxHeight: 360,
-                    objectFit: "contain",
-                    borderRadius: 12,
-                    border: "1px solid #eee",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 16,
                     background: "#fafafa",
+                    padding: 12,
                   }}
-                />
+                >
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Prévia da imagem"
+                    style={{
+                      width: "100%",
+                      maxHeight: 360,
+                      objectFit: "contain",
+                      borderRadius: 12,
+                    }}
+                  />
+                </div>
               </div>
             )}
 
             <div
-              style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 14,
+                flexWrap: "wrap",
+              }}
             >
               <button onClick={analyzeImage} style={btnPrimary}>
                 {imageLoading ? "Analisando..." : "Analisar Imagem"}
               </button>
 
               <button onClick={openReverseSearch} style={btnSecondary}>
-                🔎 Buscar esta imagem na internet
+                Buscar na internet
               </button>
 
               <button
@@ -515,10 +551,11 @@ export default function Home() {
               <div
                 style={{
                   marginTop: 14,
-                  padding: 12,
+                  padding: 14,
                   borderRadius: 12,
                   background: "#f5f7fb",
                   border: "1px solid #e7eaf3",
+                  lineHeight: 1.6,
                 }}
               >
                 {imageMessage}
@@ -535,8 +572,8 @@ export default function Home() {
                   background: "#fcfcfd",
                 }}
               >
-                <h3 style={{ marginTop: 0, marginBottom: 10 }}>
-                  Resultado da Verificação
+                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+                  Resultado da verificação
                 </h3>
 
                 <div
@@ -566,8 +603,18 @@ export default function Home() {
                   />
                 </div>
 
-                <div style={{ marginTop: 18 }}>
-                  <h4 style={{ marginBottom: 8 }}>Sinais detectados</h4>
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
+                    Sinais detectados
+                  </h4>
                   <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.7 }}>
                     {imageReport.observedSigns.map((sign, index) => (
                       <li key={index}>{sign}</li>
@@ -575,31 +622,39 @@ export default function Home() {
                   </ul>
                 </div>
 
-                <div style={{ marginTop: 18 }}>
-                  <h4 style={{ marginBottom: 8 }}>Contexto e verificação</h4>
-                  <div style={{ color: "#444", lineHeight: 1.6 }}>
-                    <div>
-                      Origem analisada: <b>{imageReport.sourceType}</b>
-                    </div>
-                    <div>
-                      Busca reversa disponível para investigação complementar.
-                    </div>
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
+                    Contexto e verificação
+                  </h4>
+                  <div>
+                    Origem analisada: <b>{imageReport.sourceType}</b>
+                  </div>
+                  <div>
+                    Busca reversa disponível para investigação complementar.
                   </div>
                 </div>
 
                 <div
                   style={{
-                    marginTop: 18,
+                    marginTop: 16,
                     padding: 14,
                     borderRadius: 12,
                     background: "#f5f7fb",
                     border: "1px solid #e7eaf3",
+                    lineHeight: 1.6,
                   }}
                 >
                   <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
-                  <div style={{ lineHeight: 1.6 }}>
-                    {imageReport.recommendation}
-                  </div>
+                  <div>{imageReport.recommendation}</div>
                 </div>
               </div>
             )}
@@ -608,7 +663,7 @@ export default function Home() {
 
         {mode === "video" && (
           <>
-            <h2 style={{ marginTop: 18, marginBottom: 10 }}>Verificar Vídeo</h2>
+            <h2 style={sectionTitleStyle}>Verificar Vídeo</h2>
 
             <p style={{ marginTop: 0, color: "#444" }}>
               Envie um vídeo para análise inicial de deepfake/manipulação.
