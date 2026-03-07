@@ -67,7 +67,7 @@ export default function Home() {
   const [imageMessage, setImageMessage] = useState("");
 
   const [videoFile, setVideoFile] = useState(null);
-  const [videoResult, setVideoResult] = useState("");
+  const [videoResult, setVideoResult] = useState(null);
 
   const imagePreviewUrl = useMemo(() => {
     if (imageFile) return URL.createObjectURL(imageFile);
@@ -85,7 +85,7 @@ export default function Home() {
     setImageReport(null);
     setImageMessage("");
     setVideoFile(null);
-    setVideoResult("");
+    setVideoResult(null);
   }
 
   function analyzeText() {
@@ -214,7 +214,7 @@ export default function Home() {
         let observedSigns = [
           "Ausência de metadados completos no fluxo atual.",
           "Análise ainda preliminar baseada no arquivo enviado.",
-          "Recomendado complementar com busca reversa e contexto."
+          "Recomendado complementar com busca reversa e contexto.",
         ];
 
         if (
@@ -229,7 +229,7 @@ export default function Home() {
           observedSigns = [
             "Nome do arquivo sugere possível edição ou geração.",
             "Necessária checagem adicional de origem e contexto.",
-            "Buscar confirmação em fontes externas antes de concluir."
+            "Buscar confirmação em fontes externas antes de concluir.",
           ];
         } else if (fileSizeMb > 4) {
           aiProbability = 39;
@@ -237,7 +237,7 @@ export default function Home() {
           observedSigns = [
             "Arquivo grande o suficiente para preservar muitos detalhes.",
             "É útil comparar versões e verificar contexto de publicação.",
-            "A inspeção visual inicial não basta para confirmação final."
+            "A inspeção visual inicial não basta para confirmação final.",
           ];
         }
 
@@ -309,13 +309,71 @@ export default function Home() {
 
   function analyzeVideo() {
     if (!videoFile) {
-      setVideoResult("Selecione um vídeo para analisar.");
+      setVideoResult({
+        classification: "Nenhum vídeo selecionado.",
+        fileName: "-",
+        fileSize: "0 MB",
+        observation: "Selecione um vídeo para iniciar a triagem.",
+        detectedSigns: [
+          "Sem arquivo enviado para análise inicial.",
+        ],
+        nextStep: "Enviar um vídeo para continuar.",
+      });
       return;
     }
 
-    setVideoResult(
-      "Vídeo recebido ✅ Próximo passo: extrair frames e detectar indícios de deepfake/manipulação."
-    );
+    const fileName = videoFile.name;
+    const lowerName = fileName.toLowerCase();
+    const fileSizeMb = (videoFile.size / (1024 * 1024)).toFixed(2);
+
+    let classification = "Vídeo recebido para triagem inicial.";
+    let observation =
+      "O arquivo pode seguir para extração de frames e análise de consistência visual.";
+    let detectedSigns = [
+      "Arquivo carregado com sucesso no protótipo.",
+      "Próxima etapa recomendada: extração de frames.",
+      "Necessária checagem de contexto e origem do vídeo.",
+    ];
+    let nextStep =
+      "Próximo passo: analisar frames, áudio e sinais de manipulação/deepfake.";
+
+    if (
+      lowerName.includes("deepfake") ||
+      lowerName.includes("fake") ||
+      lowerName.includes("ai") ||
+      lowerName.includes("edited")
+    ) {
+      classification = "Vídeo com indícios que merecem atenção reforçada.";
+      observation =
+        "O nome do arquivo sugere possível edição, geração sintética ou manipulação.";
+      detectedSigns = [
+        "Nome do arquivo sugere possível conteúdo manipulado.",
+        "Recomendado verificar origem, data de publicação e frames-chave.",
+        "Análise aprofundada deve incluir sincronização facial e consistência visual.",
+      ];
+      nextStep =
+        "Próximo passo: rodar análise aprofundada de frames e possíveis sinais de deepfake.";
+    } else if (videoFile.size > 50 * 1024 * 1024) {
+      classification = "Vídeo grande recebido para análise técnica.";
+      observation =
+        "Arquivos maiores podem conter mais detalhes úteis para uma investigação aprofundada.";
+      detectedSigns = [
+        "Tamanho do arquivo pode preservar qualidade visual relevante.",
+        "Extração de frames pode revelar inconsistências discretas.",
+        "Vale analisar também compressão, cortes e histórico de publicação.",
+      ];
+      nextStep =
+        "Próximo passo: processar frames e examinar cortes, compressão e contexto.";
+    }
+
+    setVideoResult({
+      classification,
+      fileName,
+      fileSize: `${fileSizeMb} MB`,
+      observation,
+      detectedSigns,
+      nextStep,
+    });
   }
 
   const cardStyle = {
@@ -712,21 +770,36 @@ export default function Home() {
           <>
             <h2 style={sectionTitleStyle}>Verificar Vídeo</h2>
 
-            <p style={{ marginTop: 0, color: "#444" }}>
-              Envie um vídeo para análise inicial de deepfake/manipulação.
+            <p style={{ marginTop: 0, color: "#444", lineHeight: 1.6 }}>
+              Envie um vídeo para triagem inicial de <b>deepfake</b>, edição ou
+              manipulação.
             </p>
 
-            <input
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                setVideoFile(file || null);
-                setVideoResult("");
+            <div
+              style={{
+                marginTop: 12,
+                border: "2px dashed #d1d5db",
+                borderRadius: 16,
+                padding: 18,
+                background: "#fafafa",
               }}
-            />
+            >
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>
+                Enviar vídeo
+              </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setVideoFile(file || null);
+                  setVideoResult(null);
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               <button onClick={analyzeVideo} style={btnPrimary}>
                 Analisar Vídeo
               </button>
@@ -734,7 +807,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   setVideoFile(null);
-                  setVideoResult("");
+                  setVideoResult(null);
                 }}
                 style={btnSecondary}
               >
@@ -745,14 +818,48 @@ export default function Home() {
             {videoResult && (
               <div
                 style={{
-                  marginTop: 14,
-                  padding: 12,
-                  borderRadius: 12,
-                  background: "#f5f7fb",
-                  border: "1px solid #e7eaf3",
+                  marginTop: 18,
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 16,
+                  padding: 18,
+                  background: "#fcfcfd",
+                  lineHeight: 1.7,
                 }}
               >
-                <b>Resultado:</b> {videoResult}
+                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+                  Resultado da verificação
+                </h3>
+
+                <div>
+                  <b>Classificação:</b> {videoResult.classification}
+                </div>
+
+                <div>
+                  <b>Arquivo:</b> {videoResult.fileName}
+                </div>
+
+                <div>
+                  <b>Tamanho:</b> {videoResult.fileSize}
+                </div>
+
+                <div>
+                  <b>Observação:</b> {videoResult.observation}
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
+                    Sinais detectados
+                  </h4>
+                  <ul style={{ marginTop: 0, paddingLeft: 20 }}>
+                    {videoResult.detectedSigns.map((sign, index) => (
+                      <li key={index}>{sign}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <b>Próximo passo:</b> {videoResult.nextStep}
+                </div>
               </div>
             )}
           </>
