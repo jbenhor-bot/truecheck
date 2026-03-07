@@ -16,6 +16,18 @@ function getConfidenceColor(label) {
   return "#16a34a";
 }
 
+function getAttentionLevel(score) {
+  if (score >= 70) return "Alta";
+  if (score >= 40) return "Média";
+  return "Baixa";
+}
+
+function getAttentionColor(level) {
+  if (level === "Alta") return "#dc2626";
+  if (level === "Média") return "#d97706";
+  return "#16a34a";
+}
+
 function ProgressBar({ label, value }) {
   return (
     <div style={{ marginTop: 12 }}>
@@ -379,11 +391,20 @@ export default function Home() {
     if (!videoFile) {
       setVideoResult({
         classification: "Nenhum vídeo selecionado.",
+        attentionLevel: "Baixa",
+        attentionScore: 0,
         fileName: "-",
         fileSize: "0 MB",
         duration: "-",
         observation: "Selecione um vídeo para iniciar a triagem.",
+        frameReadings: [
+          "Sem frames disponíveis para leitura.",
+          "Envie um vídeo para gerar a análise inicial.",
+          "A triagem visual depende da extração automática dos frames.",
+        ],
         detectedSigns: ["Sem arquivo enviado para análise inicial."],
+        recommendation:
+          "Envie um vídeo MP4 para iniciar a triagem automática.",
         nextStep: "Enviar um vídeo para continuar.",
       });
       setVideoFrames([]);
@@ -401,14 +422,22 @@ export default function Home() {
       const fileSizeMb = (videoFile.size / (1024 * 1024)).toFixed(2);
       const durationSeconds = extracted.duration.toFixed(2);
 
+      let attentionScore = 28;
       let classification = "Vídeo recebido para triagem inicial.";
       let observation =
         "Frames automáticos foram extraídos para inspeção visual preliminar.";
+      let frameReadings = [
+        "Frame 1: imagem disponível para checar fundo, iluminação e nitidez.",
+        "Frame 2: bom ponto intermediário para observar continuidade visual.",
+        "Frame 3: útil para comparar mudanças bruscas entre começo e fim.",
+      ];
       let detectedSigns = [
         "Frames capturados em diferentes momentos do vídeo.",
         "Próxima etapa recomendada: comparar rosto, fundo, cortes e consistência visual.",
         "Necessária checagem de origem, contexto e publicação.",
       ];
+      let recommendation =
+        "Use os frames extraídos como triagem inicial. O ideal é complementar com análise mais profunda de cortes, sincronização facial e contexto da publicação.";
       let nextStep =
         "Próximo passo: analisar frames, áudio e sinais de manipulação/deepfake.";
 
@@ -418,54 +447,104 @@ export default function Home() {
         lowerName.includes("ai") ||
         lowerName.includes("edited")
       ) {
+        attentionScore = 78;
         classification = "Vídeo com indícios que merecem atenção reforçada.";
         observation =
           "O nome do arquivo sugere possível edição, geração sintética ou manipulação.";
+        frameReadings = [
+          "Frame 1: observar contornos faciais e fusão com o fundo.",
+          "Frame 2: verificar consistência de pele, sombras e olhos.",
+          "Frame 3: procurar mudanças estranhas entre cenas e detalhes do rosto.",
+        ];
         detectedSigns = [
           "Nome do arquivo sugere possível conteúdo manipulado.",
           "Frames automáticos já estão prontos para inspeção visual.",
           "Análise aprofundada deve incluir sincronização facial e consistência entre cenas.",
         ];
+        recommendation =
+          "Dar prioridade à checagem de autenticidade, com comparação quadro a quadro e validação da origem.";
         nextStep =
           "Próximo passo: rodar análise aprofundada de frames e possíveis sinais de deepfake.";
       } else if (videoFile.size > 50 * 1024 * 1024) {
+        attentionScore = 52;
         classification = "Vídeo grande recebido para análise técnica.";
         observation =
           "Arquivos maiores podem preservar mais detalhes úteis para investigação.";
+        frameReadings = [
+          "Frame 1: qualidade suficiente para examinar textura e compressão.",
+          "Frame 2: permite observar continuidade entre partes do vídeo.",
+          "Frame 3: ajuda a verificar se há variações estranhas de cena.",
+        ];
         detectedSigns = [
           "Frames extraídos de um arquivo com mais detalhes visuais.",
           "Vale analisar compressão, cortes e continuidade entre cenas.",
           "Contexto de publicação continua sendo essencial.",
         ];
+        recommendation =
+          "Aproveitar a maior riqueza visual do arquivo para inspeção técnica detalhada.";
         nextStep =
           "Próximo passo: processar frames e examinar cortes, compressão e contexto.";
+      } else if (extracted.duration > 20) {
+        attentionScore = 46;
+        classification = "Vídeo mais longo com necessidade de revisão gradual.";
+        observation =
+          "Vídeos mais longos podem esconder sinais de manipulação em trechos específicos.";
+        frameReadings = [
+          "Frame 1: útil para avaliar a abertura do vídeo.",
+          "Frame 2: importante para revisar o trecho central.",
+          "Frame 3: ajuda a comparar possíveis mudanças no encerramento.",
+        ];
+        detectedSigns = [
+          "Duração maior pede checagem por trechos.",
+          "Os 3 frames ajudam na triagem, mas não substituem revisão completa.",
+          "É importante revisar também momentos fora dos frames extraídos.",
+        ];
+        recommendation =
+          "Selecionar mais frames ao longo do vídeo para ampliar a cobertura da inspeção.";
+        nextStep =
+          "Próximo passo: extrair mais quadros e revisar trechos adicionais.";
       }
+
+      const attentionLevel = getAttentionLevel(attentionScore);
 
       setVideoFrames(extracted.frames);
 
       setVideoResult({
         classification,
+        attentionLevel,
+        attentionScore,
         fileName,
         fileSize: `${fileSizeMb} MB`,
         duration: `${durationSeconds} s`,
         observation,
+        frameReadings,
         detectedSigns,
+        recommendation,
         nextStep,
       });
     } catch (error) {
       setVideoResult({
         classification: "Não foi possível extrair frames do vídeo.",
+        attentionLevel: "Média",
+        attentionScore: 45,
         fileName: videoFile.name,
         fileSize: `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`,
         duration: "-",
         observation:
           "O navegador encontrou dificuldade para processar esse arquivo no momento.",
+        frameReadings: [
+          "Não foi possível gerar a leitura dos frames.",
+          "O formato ou a codificação podem exigir tratamento adicional.",
+          "Tente um arquivo MP4 simples para validar o fluxo.",
+        ],
         detectedSigns: [
           "Falha na leitura automática do vídeo.",
           "Formato ou codificação podem exigir tratamento adicional.",
         ],
-        nextStep:
+        recommendation:
           "Tentar outro vídeo MP4 ou implementar processamento mais robusto no backend.",
+        nextStep:
+          "Tentar outro vídeo MP4 ou implementar análise de vídeo no servidor.",
       });
       setVideoFrames([]);
     } finally {
@@ -977,7 +1056,29 @@ export default function Home() {
                   Resultado da verificação
                 </h3>
 
-                <div>
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "#f3f4f6",
+                    fontWeight: 700,
+                    color: getAttentionColor(videoResult.attentionLevel),
+                    border: `1px solid ${getAttentionColor(
+                      videoResult.attentionLevel
+                    )}`,
+                    marginBottom: 12,
+                  }}
+                >
+                  Nível de atenção do vídeo: {videoResult.attentionLevel}
+                </div>
+
+                <ProgressBar
+                  label="Pontuação inicial de risco"
+                  value={videoResult.attentionScore}
+                />
+
+                <div style={{ marginTop: 14 }}>
                   <b>Classificação:</b> {videoResult.classification}
                 </div>
 
@@ -997,7 +1098,34 @@ export default function Home() {
                   <b>Observação:</b> {videoResult.observation}
                 </div>
 
-                <div style={{ marginTop: 12 }}>
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
+                    Leitura inicial dos frames
+                  </h4>
+                  <ul style={{ marginTop: 0, paddingLeft: 20 }}>
+                    {videoResult.frameReadings.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
                   <h4 style={{ marginTop: 0, marginBottom: 8 }}>
                     Sinais detectados
                   </h4>
@@ -1008,7 +1136,20 @@ export default function Home() {
                   </ul>
                 </div>
 
-                <div style={{ marginTop: 10 }}>
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#f5f7fb",
+                    border: "1px solid #e7eaf3",
+                  }}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
+                  <div>{videoResult.recommendation}</div>
+                </div>
+
+                <div style={{ marginTop: 12 }}>
                   <b>Próximo passo:</b> {videoResult.nextStep}
                 </div>
               </div>
