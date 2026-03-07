@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrueCheck - Verificar Texto</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #cbd5e1;
+      margin-bottom: 24px;
+      font-size: 18px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 220px;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      font-size: 16px;
+      resize: none;
+      margin-bottom: 20px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: white;
+      color: #0f172a;
+      text-decoration: none;
+      padding: 14px 22px;
+      border-radius: 14px;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .btn-secondary {
+      background: #38bdf8;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Verificar Texto</h1>
+    <p>Cole aqui um texto para receber uma análise inicial.</p>
+
+    <textarea placeholder="Cole aqui o texto que você deseja analisar..."></textarea>
+
+    <div class="actions">
+      <a href="index.html" class="btn">Voltar</a>
+      <a href="#" class="btn btn-secondary">Analisar Texto</a>
+    </div>
+  </div>
+</body>
+</html>
