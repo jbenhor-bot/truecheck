@@ -4,16 +4,15 @@ import { useMemo, useState } from "react";
 
 function getConfidenceLabel(aiProbability, manipulationRisk) {
   const riskAverage = (aiProbability + manipulationRisk) / 2;
-
   if (riskAverage >= 70) return "Baixa";
   if (riskAverage >= 40) return "Média";
   return "Alta";
 }
 
 function getConfidenceColor(label) {
-  if (label === "Baixa") return "#dc2626";
-  if (label === "Média") return "#d97706";
-  return "#16a34a";
+  if (label === "Baixa") return "#ef4444";
+  if (label === "Média") return "#f59e0b";
+  return "#22c55e";
 }
 
 function getAttentionLevel(score) {
@@ -23,21 +22,22 @@ function getAttentionLevel(score) {
 }
 
 function getAttentionColor(level) {
-  if (level === "Alta") return "#dc2626";
-  if (level === "Média") return "#d97706";
-  return "#16a34a";
+  if (level === "Alta") return "#ef4444";
+  if (level === "Média") return "#f59e0b";
+  return "#22c55e";
 }
 
 function ProgressBar({ label, value }) {
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ marginTop: 14 }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          marginBottom: 6,
+          marginBottom: 8,
           fontSize: 14,
           fontWeight: 700,
+          color: "#cbd5e1",
         }}
       >
         <span>{label}</span>
@@ -48,20 +48,68 @@ function ProgressBar({ label, value }) {
         style={{
           width: "100%",
           height: 12,
-          background: "#e5e7eb",
+          background: "rgba(255,255,255,0.08)",
           borderRadius: 999,
           overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         <div
           style={{
             width: `${value}%`,
             height: "100%",
-            background: "#111827",
+            background: "linear-gradient(90deg, #38bdf8, #6366f1)",
             borderRadius: 999,
           }}
         />
       </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, children }) {
+  return (
+    <div
+      style={{
+        marginTop: 18,
+        padding: 18,
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      {title && (
+        <h3
+          style={{
+            marginTop: 0,
+            marginBottom: 12,
+            fontSize: 18,
+            color: "#f8fafc",
+          }}
+        >
+          {title}
+        </h3>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Badge({ text, color }) {
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        padding: "8px 12px",
+        borderRadius: 999,
+        fontWeight: 700,
+        color,
+        border: `1px solid ${color}`,
+        background: "rgba(255,255,255,0.04)",
+      }}
+    >
+      {text}
     </div>
   );
 }
@@ -109,7 +157,6 @@ export default function Home() {
 
     if (!conteudo) {
       setTextResult({
-        status: "empty",
         classification: "Nenhum texto inserido.",
         size: 0,
         sentences: 0,
@@ -200,7 +247,6 @@ export default function Home() {
     }
 
     setTextResult({
-      status: "ok",
       classification,
       size: tamanho,
       sentences: frases,
@@ -271,7 +317,6 @@ export default function Home() {
             "Use esta análise como triagem inicial. O próximo passo ideal é combinar busca reversa, contexto de publicação e verificação com fontes confiáveis.",
           confidenceLabel,
         });
-
         return;
       }
 
@@ -356,12 +401,7 @@ export default function Home() {
       video.onloadedmetadata = async () => {
         try {
           const duration = video.duration || 1;
-          const captureTimes = [
-            duration * 0.2,
-            duration * 0.5,
-            duration * 0.8,
-          ];
-
+          const captureTimes = [duration * 0.2, duration * 0.5, duration * 0.8];
           const frames = [];
 
           for (const time of captureTimes) {
@@ -370,10 +410,7 @@ export default function Home() {
           }
 
           URL.revokeObjectURL(objectUrl);
-          resolve({
-            duration,
-            frames,
-          });
+          resolve({ duration, frames });
         } catch (error) {
           URL.revokeObjectURL(objectUrl);
           reject(error);
@@ -403,8 +440,7 @@ export default function Home() {
           "A triagem visual depende da extração automática dos frames.",
         ],
         detectedSigns: ["Sem arquivo enviado para análise inicial."],
-        recommendation:
-          "Envie um vídeo MP4 para iniciar a triagem automática.",
+        recommendation: "Envie um vídeo MP4 para iniciar a triagem automática.",
         nextStep: "Enviar um vídeo para continuar.",
       });
       setVideoFrames([]);
@@ -508,7 +544,6 @@ export default function Home() {
       const attentionLevel = getAttentionLevel(attentionScore);
 
       setVideoFrames(extracted.frames);
-
       setVideoResult({
         classification,
         attentionLevel,
@@ -552,62 +587,112 @@ export default function Home() {
     }
   }
 
+  const pageStyle = {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "radial-gradient(circle at top, #1e293b 0%, #0f172a 45%, #020617 100%)",
+    fontFamily: "Arial, sans-serif",
+    padding: 20,
+    color: "#e2e8f0",
+  };
+
   const cardStyle = {
     width: "100%",
-    maxWidth: 820,
-    background: "white",
-    padding: 26,
-    borderRadius: 16,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    maxWidth: 900,
+    background: "rgba(15, 23, 42, 0.82)",
+    padding: 28,
+    borderRadius: 28,
+    boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    backdropFilter: "blur(14px)",
   };
 
   const btnPrimary = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "none",
+    padding: "12px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.08)",
     cursor: "pointer",
     fontWeight: 700,
-    background: "#111827",
+    background: "linear-gradient(135deg, #38bdf8, #6366f1)",
     color: "white",
+    boxShadow: "0 10px 25px rgba(59,130,246,0.25)",
   };
 
   const btnSecondary = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid #ddd",
-    background: "#fff",
+    padding: "12px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.04)",
     cursor: "pointer",
     fontWeight: 700,
+    color: "#e2e8f0",
   };
 
-  const sectionTitleStyle = {
-    marginTop: 18,
-    marginBottom: 10,
-    fontSize: 18,
-    fontWeight: 700,
+  const inputStyle = {
+    width: "100%",
+    padding: 12,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.04)",
+    color: "#f8fafc",
+    fontSize: 15,
+    outline: "none",
   };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f5f7fb",
-        fontFamily: "Arial, sans-serif",
-        padding: 18,
-        color: "#111",
-      }}
-    >
+    <main style={pageStyle}>
       <div style={cardStyle}>
         <div
-          style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
         >
           <div>
-            <h1 style={{ margin: 0, fontSize: 40 }}>TrueCheck</h1>
-            <p style={{ marginTop: 8, color: "#444" }}>
-              Escolha o tipo de verificação e receba uma análise inicial.
+            <div
+              style={{
+                display: "inline-block",
+                padding: "8px 12px",
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                color: "#7dd3fc",
+                background: "rgba(56,189,248,0.08)",
+                border: "1px solid rgba(56,189,248,0.18)",
+                marginBottom: 14,
+              }}
+            >
+              Plataforma de verificação
+            </div>
+
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 44,
+                color: "#f8fafc",
+              }}
+            >
+              TrueCheck
+            </h1>
+
+            <p
+              style={{
+                marginTop: 10,
+                color: "#94a3b8",
+                lineHeight: 1.7,
+                maxWidth: 620,
+              }}
+            >
+              Verifique textos, imagens e vídeos com uma triagem inicial clara,
+              moderna e pronta para evoluir com IA e fontes confiáveis.
             </p>
           </div>
 
@@ -618,542 +703,364 @@ export default function Home() {
 
         {!mode && (
           <>
-            <p style={{ marginTop: 18, marginBottom: 10, fontWeight: 700 }}>
-              Escolha o tipo de verificação
-            </p>
+            <SectionCard title="Escolha o tipo de verificação">
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button onClick={() => setMode("text")} style={btnPrimary}>
+                  Verificar Texto
+                </button>
+                <button onClick={() => setMode("image")} style={btnPrimary}>
+                  Verificar Imagem
+                </button>
+                <button onClick={() => setMode("video")} style={btnPrimary}>
+                  Verificar Vídeo
+                </button>
+              </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => setMode("text")} style={btnPrimary}>
-                Verificar Texto
-              </button>
-              <button onClick={() => setMode("image")} style={btnPrimary}>
-                Verificar Imagem
-              </button>
-              <button onClick={() => setMode("video")} style={btnPrimary}>
-                Verificar Vídeo
-              </button>
-            </div>
-
-            <p style={{ marginTop: 14, fontSize: 13, color: "#666" }}>
-              Dica: começaremos com análises iniciais e depois conectamos IA +
-              fontes.
-            </p>
+              <p
+                style={{
+                  marginTop: 16,
+                  marginBottom: 0,
+                  fontSize: 14,
+                  color: "#94a3b8",
+                }}
+              >
+                Começaremos com análises iniciais e depois conectaremos IA,
+                fontes externas e verificações mais profundas.
+              </p>
+            </SectionCard>
           </>
         )}
 
         {mode === "text" && (
           <>
-            <h2 style={sectionTitleStyle}>Verificar Texto</h2>
+            <SectionCard title="Verificar Texto">
+              <p style={{ color: "#94a3b8", marginTop: 0, lineHeight: 1.6 }}>
+                Cole um texto, notícia ou declaração para receber uma triagem
+                inicial.
+              </p>
 
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Cole aqui o texto ou notícia..."
-              rows={8}
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #ddd",
-                resize: "vertical",
-                fontSize: 15,
-              }}
-            />
-
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button onClick={analyzeText} style={btnPrimary}>
-                Verificar
-              </button>
-              <button
-                onClick={() => {
-                  setText("");
-                  setTextResult(null);
-                }}
-                style={btnSecondary}
-              >
-                Limpar
-              </button>
-            </div>
-
-            {textResult && (
-              <div
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Cole aqui o texto ou notícia..."
+                rows={8}
                 style={{
-                  marginTop: 14,
-                  padding: 16,
-                  borderRadius: 12,
-                  background: "#f5f7fb",
-                  border: "1px solid #e7eaf3",
-                  lineHeight: 1.7,
+                  ...inputStyle,
+                  resize: "vertical",
                 }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                  Resultado da análise
-                </div>
+              />
 
-                <div>
-                  <b>Classificação:</b> {textResult.classification}
-                </div>
-
-                <div>
-                  <b>Tamanho do texto:</b> {textResult.size} caracteres
-                </div>
-
-                <div>
-                  <b>Frases identificadas:</b> {textResult.sentences}
-                </div>
-
-                <div>
-                  <b>Observação:</b> {textResult.observation}
-                </div>
-
-                <div style={{ marginTop: 8 }}>
-                  <b>Próximo passo:</b> {textResult.nextStep}
-                </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <button onClick={analyzeText} style={btnPrimary}>
+                  Verificar
+                </button>
+                <button
+                  onClick={() => {
+                    setText("");
+                    setTextResult(null);
+                  }}
+                  style={btnSecondary}
+                >
+                  Limpar
+                </button>
               </div>
-            )}
+
+              {textResult && (
+                <SectionCard title="Resultado da análise">
+                  <div style={{ lineHeight: 1.8 }}>
+                    <div><b>Classificação:</b> {textResult.classification}</div>
+                    <div><b>Tamanho do texto:</b> {textResult.size} caracteres</div>
+                    <div><b>Frases identificadas:</b> {textResult.sentences}</div>
+                    <div><b>Observação:</b> {textResult.observation}</div>
+                    <div><b>Próximo passo:</b> {textResult.nextStep}</div>
+                  </div>
+                </SectionCard>
+              )}
+            </SectionCard>
           </>
         )}
 
         {mode === "image" && (
           <>
-            <h2 style={sectionTitleStyle}>Verificar Imagem</h2>
+            <SectionCard title="Verificar Imagem">
+              <p style={{ color: "#94a3b8", marginTop: 0, lineHeight: 1.6 }}>
+                Envie uma imagem ou cole a URL para analisar indícios de
+                <b> geração por IA </b>e <b>manipulação digital</b>.
+              </p>
 
-            <p style={{ marginTop: 0, color: "#444", lineHeight: 1.6 }}>
-              Envie uma imagem ou cole a URL para analisar indícios de{" "}
-              <b>geração por IA</b> e <b>manipulação digital</b>.
-            </p>
-
-            <div
-              style={{
-                marginTop: 12,
-                border: "2px dashed #d1d5db",
-                borderRadius: 16,
-                padding: 18,
-                background: "#fafafa",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 10 }}>
-                Enviar imagem
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  setImageFile(file || null);
-                  setImageReport(null);
-                  setImageMessage("");
-                }}
-              />
-
-              <div style={{ marginTop: 14, fontWeight: 700 }}>
-                ou cole a URL da imagem
-              </div>
-
-              <input
-                type="text"
-                value={imageUrl}
-                onChange={(e) => {
-                  setImageUrl(e.target.value);
-                  setImageReport(null);
-                  setImageMessage("");
-                }}
-                placeholder="https://exemplo.com/minha-imagem.jpg"
-                style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 12,
-                  border: "1px solid #ddd",
-                  fontSize: 15,
-                  marginTop: 10,
-                }}
-              />
-            </div>
-
-            {imagePreviewUrl && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                  Prévia da imagem
+              <SectionCard title="Entrada da imagem">
+                <div style={{ fontWeight: 700, marginBottom: 10, color: "#e2e8f0" }}>
+                  Enviar imagem
                 </div>
-                <div
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 16,
-                    background: "#fafafa",
-                    padding: 12,
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setImageFile(file || null);
+                    setImageReport(null);
+                    setImageMessage("");
                   }}
-                >
-                  <img
-                    src={imagePreviewUrl}
-                    alt="Prévia da imagem"
-                    style={{
-                      width: "100%",
-                      maxHeight: 360,
-                      objectFit: "contain",
-                      borderRadius: 12,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginTop: 14,
-                flexWrap: "wrap",
-              }}
-            >
-              <button onClick={analyzeImage} style={btnPrimary}>
-                {imageLoading ? "Analisando..." : "Analisar Imagem"}
-              </button>
-
-              <button onClick={openReverseSearch} style={btnSecondary}>
-                Buscar na internet
-              </button>
-
-              <button
-                onClick={() => {
-                  setImageFile(null);
-                  setImageUrl("");
-                  setImageReport(null);
-                  setImageMessage("");
-                  setImageLoading(false);
-                }}
-                style={btnSecondary}
-              >
-                Limpar
-              </button>
-            </div>
-
-            {imageMessage && (
-              <div
-                style={{
-                  marginTop: 14,
-                  padding: 14,
-                  borderRadius: 12,
-                  background: "#f5f7fb",
-                  border: "1px solid #e7eaf3",
-                  lineHeight: 1.6,
-                }}
-              >
-                {imageMessage}
-              </div>
-            )}
-
-            {imageReport && (
-              <div
-                style={{
-                  marginTop: 18,
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 16,
-                  padding: 18,
-                  background: "#fcfcfd",
-                }}
-              >
-                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-                  Resultado da verificação
-                </h3>
+                  style={{ color: "#cbd5e1" }}
+                />
 
                 <div
                   style={{
-                    display: "inline-block",
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    background: "#f3f4f6",
+                    marginTop: 16,
+                    marginBottom: 10,
                     fontWeight: 700,
-                    color: getConfidenceColor(imageReport.confidenceLabel),
-                    border: `1px solid ${getConfidenceColor(
-                      imageReport.confidenceLabel
-                    )}`,
+                    color: "#e2e8f0",
                   }}
                 >
-                  Confiabilidade da imagem: {imageReport.confidenceLabel}
+                  ou cole a URL da imagem
                 </div>
 
-                <div style={{ marginTop: 16 }}>
-                  <ProgressBar
-                    label="Probabilidade de geração por IA"
-                    value={imageReport.aiProbability}
-                  />
-                  <ProgressBar
-                    label="Risco de manipulação/edição"
-                    value={imageReport.manipulationRisk}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 18,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setImageReport(null);
+                    setImageMessage("");
                   }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
-                    Sinais detectados
-                  </h4>
-                  <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.7 }}>
-                    {imageReport.observedSigns.map((sign, index) => (
-                      <li key={index}>{sign}</li>
-                    ))}
-                  </ul>
-                </div>
+                  placeholder="https://exemplo.com/minha-imagem.jpg"
+                  style={inputStyle}
+                />
+              </SectionCard>
 
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
-                    Contexto e verificação
-                  </h4>
-                  <div>
-                    Origem analisada: <b>{imageReport.sourceType}</b>
+              {imagePreviewUrl && (
+                <SectionCard title="Prévia da imagem">
+                  <div
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 16,
+                      background: "rgba(255,255,255,0.03)",
+                      padding: 12,
+                    }}
+                  >
+                    <img
+                      src={imagePreviewUrl}
+                      alt="Prévia da imagem"
+                      style={{
+                        width: "100%",
+                        maxHeight: 380,
+                        objectFit: "contain",
+                        borderRadius: 12,
+                        display: "block",
+                      }}
+                    />
                   </div>
-                  <div>
-                    Busca reversa disponível para investigação complementar.
-                  </div>
-                </div>
+                </SectionCard>
+              )}
 
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f5f7fb",
-                    border: "1px solid #e7eaf3",
-                    lineHeight: 1.6,
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <button onClick={analyzeImage} style={btnPrimary}>
+                  {imageLoading ? "Analisando..." : "Analisar Imagem"}
+                </button>
+                <button onClick={openReverseSearch} style={btnSecondary}>
+                  Buscar na internet
+                </button>
+                <button
+                  onClick={() => {
+                    setImageFile(null);
+                    setImageUrl("");
+                    setImageReport(null);
+                    setImageMessage("");
+                    setImageLoading(false);
                   }}
+                  style={btnSecondary}
                 >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
-                  <div>{imageReport.recommendation}</div>
-                </div>
+                  Limpar
+                </button>
               </div>
-            )}
+
+              {imageMessage && (
+                <SectionCard title="Mensagem">
+                  <div style={{ lineHeight: 1.7 }}>{imageMessage}</div>
+                </SectionCard>
+              )}
+
+              {imageReport && (
+                <SectionCard title="Resultado da verificação">
+                  <Badge
+                    text={`Confiabilidade da imagem: ${imageReport.confidenceLabel}`}
+                    color={getConfidenceColor(imageReport.confidenceLabel)}
+                  />
+
+                  <div style={{ marginTop: 14 }}>
+                    <ProgressBar
+                      label="Probabilidade de geração por IA"
+                      value={imageReport.aiProbability}
+                    />
+                    <ProgressBar
+                      label="Risco de manipulação/edição"
+                      value={imageReport.manipulationRisk}
+                    />
+                  </div>
+
+                  <SectionCard title="Sinais detectados">
+                    <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                      {imageReport.observedSigns.map((sign, index) => (
+                        <li key={index}>{sign}</li>
+                      ))}
+                    </ul>
+                  </SectionCard>
+
+                  <SectionCard title="Contexto e verificação">
+                    <div style={{ lineHeight: 1.8 }}>
+                      <div>Origem analisada: <b>{imageReport.sourceType}</b></div>
+                      <div>Busca reversa disponível para investigação complementar.</div>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard title="Recomendação">
+                    <div style={{ lineHeight: 1.8 }}>{imageReport.recommendation}</div>
+                  </SectionCard>
+                </SectionCard>
+              )}
+            </SectionCard>
           </>
         )}
 
         {mode === "video" && (
           <>
-            <h2 style={sectionTitleStyle}>Verificar Vídeo</h2>
+            <SectionCard title="Verificar Vídeo">
+              <p style={{ color: "#94a3b8", marginTop: 0, lineHeight: 1.6 }}>
+                Envie um vídeo para triagem inicial de <b>deepfake</b>, edição
+                ou manipulação.
+              </p>
 
-            <p style={{ marginTop: 0, color: "#444", lineHeight: 1.6 }}>
-              Envie um vídeo para triagem inicial de <b>deepfake</b>, edição ou
-              manipulação.
-            </p>
+              <SectionCard title="Entrada do vídeo">
+                <div style={{ fontWeight: 700, marginBottom: 10, color: "#e2e8f0" }}>
+                  Enviar vídeo
+                </div>
 
-            <div
-              style={{
-                marginTop: 12,
-                border: "2px dashed #d1d5db",
-                borderRadius: 16,
-                padding: 18,
-                background: "#fafafa",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 10 }}>
-                Enviar vídeo
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setVideoFile(file || null);
+                    setVideoResult(null);
+                    setVideoFrames([]);
+                  }}
+                  style={{ color: "#cbd5e1" }}
+                />
+              </SectionCard>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <button onClick={analyzeVideo} style={btnPrimary}>
+                  {videoLoading ? "Extraindo frames..." : "Analisar Vídeo"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setVideoFile(null);
+                    setVideoResult(null);
+                    setVideoFrames([]);
+                    setVideoLoading(false);
+                  }}
+                  style={btnSecondary}
+                >
+                  Limpar
+                </button>
               </div>
 
-              <input
-                type="file"
-                accept="video/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  setVideoFile(file || null);
-                  setVideoResult(null);
-                  setVideoFrames([]);
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button onClick={analyzeVideo} style={btnPrimary}>
-                {videoLoading ? "Extraindo frames..." : "Analisar Vídeo"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setVideoFile(null);
-                  setVideoResult(null);
-                  setVideoFrames([]);
-                  setVideoLoading(false);
-                }}
-                style={btnSecondary}
-              >
-                Limpar
-              </button>
-            </div>
-
-            {videoFrames.length > 0 && (
-              <div style={{ marginTop: 18 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-                  Frames extraídos automaticamente
-                </h3>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  {videoFrames.map((frame, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 14,
-                        padding: 10,
-                        background: "#fafafa",
-                      }}
-                    >
+              {videoFrames.length > 0 && (
+                <SectionCard title="Frames extraídos automaticamente">
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {videoFrames.map((frame, index) => (
                       <div
+                        key={index}
                         style={{
-                          fontSize: 13,
-                          fontWeight: 700,
-                          marginBottom: 8,
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: 16,
+                          padding: 10,
+                          background: "rgba(255,255,255,0.03)",
                         }}
                       >
-                        Frame {index + 1}
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            marginBottom: 8,
+                            color: "#cbd5e1",
+                          }}
+                        >
+                          Frame {index + 1}
+                        </div>
+                        <img
+                          src={frame}
+                          alt={`Frame ${index + 1}`}
+                          style={{
+                            width: "100%",
+                            borderRadius: 10,
+                            display: "block",
+                          }}
+                        />
                       </div>
-                      <img
-                        src={frame}
-                        alt={`Frame ${index + 1}`}
-                        style={{
-                          width: "100%",
-                          borderRadius: 10,
-                          display: "block",
-                        }}
-                      />
+                    ))}
+                  </div>
+                </SectionCard>
+              )}
+
+              {videoResult && (
+                <SectionCard title="Resultado da verificação">
+                  <Badge
+                    text={`Nível de atenção do vídeo: ${videoResult.attentionLevel}`}
+                    color={getAttentionColor(videoResult.attentionLevel)}
+                  />
+
+                  <div style={{ marginTop: 14 }}>
+                    <ProgressBar
+                      label="Pontuação inicial de risco"
+                      value={videoResult.attentionScore}
+                    />
+                  </div>
+
+                  <SectionCard title="Resumo">
+                    <div style={{ lineHeight: 1.8 }}>
+                      <div><b>Classificação:</b> {videoResult.classification}</div>
+                      <div><b>Arquivo:</b> {videoResult.fileName}</div>
+                      <div><b>Tamanho:</b> {videoResult.fileSize}</div>
+                      <div><b>Duração estimada:</b> {videoResult.duration}</div>
+                      <div><b>Observação:</b> {videoResult.observation}</div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </SectionCard>
 
-            {videoResult && (
-              <div
-                style={{
-                  marginTop: 18,
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 16,
-                  padding: 18,
-                  background: "#fcfcfd",
-                  lineHeight: 1.7,
-                }}
-              >
-                <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-                  Resultado da verificação
-                </h3>
+                  <SectionCard title="Leitura inicial dos frames">
+                    <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                      {videoResult.frameReadings.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </SectionCard>
 
-                <div
-                  style={{
-                    display: "inline-block",
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    background: "#f3f4f6",
-                    fontWeight: 700,
-                    color: getAttentionColor(videoResult.attentionLevel),
-                    border: `1px solid ${getAttentionColor(
-                      videoResult.attentionLevel
-                    )}`,
-                    marginBottom: 12,
-                  }}
-                >
-                  Nível de atenção do vídeo: {videoResult.attentionLevel}
-                </div>
+                  <SectionCard title="Sinais detectados">
+                    <ul style={{ marginTop: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                      {videoResult.detectedSigns.map((sign, index) => (
+                        <li key={index}>{sign}</li>
+                      ))}
+                    </ul>
+                  </SectionCard>
 
-                <ProgressBar
-                  label="Pontuação inicial de risco"
-                  value={videoResult.attentionScore}
-                />
+                  <SectionCard title="Recomendação">
+                    <div style={{ lineHeight: 1.8 }}>{videoResult.recommendation}</div>
+                  </SectionCard>
 
-                <div style={{ marginTop: 14 }}>
-                  <b>Classificação:</b> {videoResult.classification}
-                </div>
-
-                <div>
-                  <b>Arquivo:</b> {videoResult.fileName}
-                </div>
-
-                <div>
-                  <b>Tamanho:</b> {videoResult.fileSize}
-                </div>
-
-                <div>
-                  <b>Duração estimada:</b> {videoResult.duration}
-                </div>
-
-                <div>
-                  <b>Observação:</b> {videoResult.observation}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                  }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
-                    Leitura inicial dos frames
-                  </h4>
-                  <ul style={{ marginTop: 0, paddingLeft: 20 }}>
-                    {videoResult.frameReadings.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                  }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>
-                    Sinais detectados
-                  </h4>
-                  <ul style={{ marginTop: 0, paddingLeft: 20 }}>
-                    {videoResult.detectedSigns.map((sign, index) => (
-                      <li key={index}>{sign}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#f5f7fb",
-                    border: "1px solid #e7eaf3",
-                  }}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: 8 }}>Recomendação</h4>
-                  <div>{videoResult.recommendation}</div>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <b>Próximo passo:</b> {videoResult.nextStep}
-                </div>
-              </div>
-            )}
+                  <SectionCard title="Próximo passo">
+                    <div style={{ lineHeight: 1.8 }}>{videoResult.nextStep}</div>
+                  </SectionCard>
+                </SectionCard>
+              )}
+            </SectionCard>
           </>
         )}
       </div>
