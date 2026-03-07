@@ -1,17 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TrueCheck</title>
-  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: #cbd5e1;
+      margin-bottom: 35px;
+    }
+
+    h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      background: white;
+      color: #0f172a;
+      text-decoration: none;
+      padding: 16px 28px;
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      transition: 0.25s;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      background: #e2e8f0;
+    }
+
+    .tip {
+      color: #cbd5e1;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    .highlight {
+      color: #38bdf8;
+    }
+  </style>
 </head>
+<body>
+  <div class="container">
+    <h1>TrueCheck</h1>
+    <p class="subtitle">
+      Verificação inteligente de <span class="highlight">texto</span>,
+      <span class="highlight">imagem</span> e
+      <span class="highlight">vídeo</span>.
+    </p>
 
-<body style="font-family: Arial; text-align:center; margin-top:100px;">
+    <h2>Escolha o tipo de verificação</h2>
 
-<h1>TrueCheck</h1>
+    <div class="buttons">
+      <a href="texto.html" class="btn">Verificar Texto</a>
+      <a href="imagem.html" class="btn">Verificar Imagem</a>
+      <a href="video.html" class="btn">Verificar Vídeo</a>
+    </div>
 
-<p>Verificação inteligente de informações.</p>
-
-<p>Site em desenvolvimento.</p>
-
+    <p class="tip">
+      Começaremos com análises iniciais e depois conectaremos IA e fontes confiáveis.
+    </p>
+  </div>
 </body>
 </html>
