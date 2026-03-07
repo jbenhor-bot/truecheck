@@ -52,12 +52,14 @@
       font-size: 16px;
       resize: none;
       margin-bottom: 20px;
+      outline: none;
     }
 
     .actions {
       display: flex;
       gap: 14px;
       flex-wrap: wrap;
+      margin-bottom: 24px;
     }
 
     .btn {
@@ -68,11 +70,57 @@
       border-radius: 14px;
       font-weight: bold;
       display: inline-block;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
     }
 
     .btn-secondary {
       background: #38bdf8;
       color: white;
+    }
+
+    .result-box {
+      background: rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 22px;
+      margin-top: 10px;
+    }
+
+    .result-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 14px;
+      color: #ffffff;
+    }
+
+    .result-line {
+      margin-bottom: 10px;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .highlight {
+      color: #38bdf8;
+      font-weight: bold;
+    }
+
+    .warning {
+      color: #fbbf24;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 18px;
+      color: #93c5fd;
+      text-decoration: none;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -81,12 +129,103 @@
     <h1>Verificar Texto</h1>
     <p>Cole aqui um texto para receber uma análise inicial.</p>
 
-    <textarea placeholder="Cole aqui o texto que você deseja analisar..."></textarea>
+    <textarea id="textoInput" placeholder="Cole aqui o texto que você deseja analisar..."></textarea>
 
     <div class="actions">
-      <a href="index.html" class="btn">Voltar</a>
-      <a href="#" class="btn btn-secondary">Analisar Texto</a>
+      <button class="btn btn-secondary" onclick="analisarTexto()">Verificar</button>
+      <button class="btn" onclick="limparTexto()">Limpar</button>
     </div>
+
+    <div class="result-box" id="resultado">
+      <div class="result-title">Resultado</div>
+      <div class="result-line">Cole um texto e clique em <span class="highlight">Verificar</span>.</div>
+    </div>
+
+    <a href="index.html" class="back-link">← Voltar para a página inicial</a>
   </div>
+
+  <script>
+    function analisarTexto() {
+      const texto = document.getElementById("textoInput").value.trim();
+      const resultado = document.getElementById("resultado");
+
+      if (texto.length === 0) {
+        resultado.innerHTML = `
+          <div class="result-title">Resultado</div>
+          <div class="result-line warning">Nenhum texto foi inserido.</div>
+          <div class="result-line">Cole um conteúdo para iniciar a análise.</div>
+        `;
+        return;
+      }
+
+      const textoLower = texto.toLowerCase();
+      const tamanho = texto.length;
+      const frases = texto.split(/[.!?]+/).filter(frase => frase.trim() !== "").length;
+
+      const palavrasForte = [
+        "confirmado", "prova", "comprovado", "garante", "certeza",
+        "denúncia", "fraude", "crime", "narcoterrorismo", "militares",
+        "governo", "ataque", "ordem", "investigação"
+      ];
+
+      const palavrasOpiniao = [
+        "acho", "opinião", "parece", "talvez", "acredito", "imagino", "sinto"
+      ];
+
+      let encontrouFato = false;
+      let encontrouOpiniao = false;
+
+      for (let palavra of palavrasForte) {
+        if (textoLower.includes(palavra)) {
+          encontrouFato = true;
+        }
+      }
+
+      for (let palavra of palavrasOpiniao) {
+        if (textoLower.includes(palavra)) {
+          encontrouOpiniao = true;
+        }
+      }
+
+      let classificacao = "";
+      let observacao = "";
+      let recomendacao = "";
+
+      if (tamanho < 40) {
+        classificacao = "Texto muito curto para análise inicial.";
+        observacao = "Há pouco conteúdo para identificar uma afirmação verificável.";
+        recomendacao = "Adicione mais contexto, nomes, local, data ou descrição do fato.";
+      } else if (encontrouOpiniao && !encontrouFato) {
+        classificacao = "Conteúdo com traços de opinião.";
+        observacao = "O texto parece mais opinativo do que factual.";
+        recomendacao = "A próxima etapa é separar opinião de afirmações que possam ser checadas.";
+      } else if (encontrouFato || frases >= 2) {
+        classificacao = "Possível afirmação verificável detectada.";
+        observacao = "O texto contém elementos que podem ser conferidos em fontes externas.";
+        recomendacao = "Próximo passo: checagem real com IA e fontes confiáveis.";
+      } else {
+        classificacao = "Conteúdo recebido para triagem inicial.";
+        observacao = "O sistema identificou texto suficiente para análise preliminar.";
+        recomendacao = "Próximo passo: aprofundar a checagem com contexto e fontes.";
+      }
+
+      resultado.innerHTML = `
+        <div class="result-title">Resultado da análise</div>
+        <div class="result-line"><span class="highlight">Classificação:</span> ${classificacao}</div>
+        <div class="result-line"><span class="highlight">Tamanho do texto:</span> ${tamanho} caracteres</div>
+        <div class="result-line"><span class="highlight">Frases identificadas:</span> ${frases}</div>
+        <div class="result-line"><span class="highlight">Observação:</span> ${observacao}</div>
+        <div class="result-line success"><span class="highlight">Próximo passo:</span> ${recomendacao}</div>
+      `;
+    }
+
+    function limparTexto() {
+      document.getElementById("textoInput").value = "";
+      document.getElementById("resultado").innerHTML = `
+        <div class="result-title">Resultado</div>
+        <div class="result-line">Cole um texto e clique em <span class="highlight">Verificar</span>.</div>
+      `;
+    }
+  </script>
 </body>
 </html>
