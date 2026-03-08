@@ -149,12 +149,21 @@ export default function Home() {
       const response = await fetch("/api/analyze-text", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text }),
       });
 
       const data = await response.json();
+
+      if (!response.ok) {
+        setTextResult({
+          classification: "Erro",
+          summary: data.error || "Não foi possível analisar o texto.",
+          recommendation: "Tente novamente.",
+        });
+        return;
+      }
 
       setTextResult({
         classification: data.classification || "Análise recebida",
@@ -188,12 +197,12 @@ export default function Home() {
         const fileName = imageFile.name.toLowerCase();
         const fileSizeMb = imageFile.size / (1024 * 1024);
 
-        let aiProbability = 24;
-        let manipulationRisk = 18;
+        let aiProbability = 32;
+        let manipulationRisk = 22;
         let observedSigns = [
-          "Ausência de metadados completos no fluxo atual.",
-          "Análise preliminar baseada no arquivo enviado.",
-          "Recomendado complementar com busca reversa e contexto.",
+          "Arquivo enviado para triagem inicial local.",
+          "A análise completa por upload ainda será conectada ao backend.",
+          "Recomenda-se complementar com contexto, fonte original e busca reversa.",
         ];
 
         if (
@@ -203,32 +212,32 @@ export default function Home() {
           fileName.includes("fake") ||
           fileName.includes("generated")
         ) {
-          aiProbability = 68;
-          manipulationRisk = 61;
+          aiProbability = 74;
+          manipulationRisk = 63;
           observedSigns = [
-            "Nome do arquivo sugere possível edição ou geração.",
-            "Necessária checagem adicional de origem e contexto.",
-            "Buscar confirmação em fontes externas antes de concluir.",
+            "O nome do arquivo sugere possível edição, geração sintética ou manipulação.",
+            "A imagem merece atenção reforçada antes de qualquer compartilhamento.",
+            "O ideal é confirmar origem, data e contexto com fontes externas.",
           ];
         } else if (fileSizeMb > 4) {
-          aiProbability = 39;
-          manipulationRisk = 34;
+          aiProbability = 41;
+          manipulationRisk = 36;
           observedSigns = [
-            "Arquivo grande o suficiente para preservar mais detalhes.",
-            "É útil comparar versões e verificar contexto de publicação.",
-            "A inspeção visual inicial não basta para confirmação final.",
+            "Arquivo com tamanho suficiente para preservar mais detalhes visuais.",
+            "A imagem pode ser comparada com versões antigas ou publicações anteriores.",
+            "A triagem atual é apenas inicial e não substitui uma perícia completa.",
           ];
         }
 
         const confidenceLabel = getConfidenceLabel(aiProbability, manipulationRisk);
 
         setImageReport({
-          sourceType: "Arquivo enviado",
+          sourceType: "Arquivo enviado pelo usuário",
           aiProbability,
           manipulationRisk,
           observedSigns,
           recommendation:
-            "Use esta análise como triagem inicial. O próximo passo ideal é combinar busca reversa, contexto de publicação e verificação com fontes confiáveis.",
+            "Esta é uma triagem inicial local. O próximo passo do TrueCheck será enviar o arquivo ao backend para uma análise mais robusta.",
           confidenceLabel,
         });
         return;
@@ -237,9 +246,9 @@ export default function Home() {
       const response = await fetch("/api/analyze-image", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageUrl })
+        body: JSON.stringify({ imageUrl }),
       });
 
       const data = await response.json();
@@ -368,132 +377,88 @@ export default function Home() {
       const extracted = await extractVideoFrames(videoFile);
 
       const fileName = videoFile.name;
-      const lowerName = fileName.toLowerCase();
-      const fileSizeMb = (videoFile.size / (1024 * 1024)).toFixed(2);
+      const fileSize = videoFile.size;
+      const fileSizeMb = (fileSize / (1024 * 1024)).toFixed(2);
       const durationSeconds = extracted.duration.toFixed(2);
 
-      let attentionScore = 28;
-      let classification = "Vídeo recebido para triagem inicial.";
-      let observation =
-        "Frames automáticos foram extraídos para inspeção visual preliminar.";
-      let frameReadings = [
-        "Frame 1: imagem disponível para checar fundo, iluminação e nitidez.",
-        "Frame 2: bom ponto intermediário para observar continuidade visual.",
-        "Frame 3: útil para comparar mudanças bruscas entre começo e fim.",
-      ];
-      let detectedSigns = [
-        "Frames capturados em diferentes momentos do vídeo.",
-        "Próxima etapa recomendada: comparar rosto, fundo, cortes e consistência visual.",
-        "Necessária checagem de origem, contexto e publicação.",
-      ];
-      let recommendation =
-        "Use os frames extraídos como triagem inicial. O ideal é complementar com análise mais profunda de cortes, sincronização facial e contexto da publicação.";
-      let nextStep =
-        "Próximo passo: analisar frames, áudio e sinais de manipulação/deepfake.";
+      const response = await fetch("/api/analyze-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileName,
+          fileSize,
+          duration: extracted.duration,
+        }),
+      });
 
-      if (
-        lowerName.includes("deepfake") ||
-        lowerName.includes("fake") ||
-        lowerName.includes("ai") ||
-        lowerName.includes("edited")
-      ) {
-        attentionScore = 78;
-        classification = "Vídeo com indícios que merecem atenção reforçada.";
-        observation =
-          "O nome do arquivo sugere possível edição, geração sintética ou manipulação.";
-        frameReadings = [
-          "Frame 1: observar contornos faciais e fusão com o fundo.",
-          "Frame 2: verificar consistência de pele, sombras e olhos.",
-          "Frame 3: procurar mudanças estranhas entre cenas e detalhes do rosto.",
-        ];
-        detectedSigns = [
-          "Nome do arquivo sugere possível conteúdo manipulado.",
-          "Frames automáticos já estão prontos para inspeção visual.",
-          "Análise aprofundada deve incluir sincronização facial e consistência entre cenas.",
-        ];
-        recommendation =
-          "Dar prioridade à checagem de autenticidade, com comparação quadro a quadro e validação da origem.";
-        nextStep =
-          "Próximo passo: rodar análise aprofundada de frames e possíveis sinais de deepfake.";
-      } else if (videoFile.size > 50 * 1024 * 1024) {
-        attentionScore = 52;
-        classification = "Vídeo grande recebido para análise técnica.";
-        observation =
-          "Arquivos maiores podem preservar mais detalhes úteis para investigação.";
-        frameReadings = [
-          "Frame 1: qualidade suficiente para examinar textura e compressão.",
-          "Frame 2: permite observar continuidade entre partes do vídeo.",
-          "Frame 3: ajuda a verificar se há variações estranhas de cena.",
-        ];
-        detectedSigns = [
-          "Frames extraídos de um arquivo com mais detalhes visuais.",
-          "Vale analisar compressão, cortes e continuidade entre cenas.",
-          "Contexto de publicação continua sendo essencial.",
-        ];
-        recommendation =
-          "Aproveitar a maior riqueza visual do arquivo para inspeção técnica detalhada.";
-        nextStep =
-          "Próximo passo: processar frames e examinar cortes, compressão e contexto.";
-      } else if (extracted.duration > 20) {
-        attentionScore = 46;
-        classification = "Vídeo mais longo com necessidade de revisão gradual.";
-        observation =
-          "Vídeos mais longos podem esconder sinais de manipulação em trechos específicos.";
-        frameReadings = [
-          "Frame 1: útil para avaliar a abertura do vídeo.",
-          "Frame 2: importante para revisar o trecho central.",
-          "Frame 3: ajuda a comparar possíveis mudanças no encerramento.",
-        ];
-        detectedSigns = [
-          "Duração maior pede checagem por trechos.",
-          "Os 3 frames ajudam na triagem, mas não substituem revisão completa.",
-          "É importante revisar também momentos fora dos frames extraídos.",
-        ];
-        recommendation =
-          "Selecionar mais frames ao longo do vídeo para ampliar a cobertura da inspeção.";
-        nextStep =
-          "Próximo passo: extrair mais quadros e revisar trechos adicionais.";
+      const data = await response.json();
+
+      if (!response.ok) {
+        setVideoResult({
+          classification: "Erro ao analisar o vídeo.",
+          attentionLevel: "Média",
+          attentionScore: 45,
+          fileName,
+          fileSize: `${fileSizeMb} MB`,
+          duration: `${durationSeconds} s`,
+          observation: data.error || "Não foi possível concluir a análise.",
+          frameReadings: [
+            "Os frames foram extraídos, mas a API não respondeu como esperado.",
+            "Tente novamente com outro arquivo ou revise a rota da API.",
+            "A análise ainda pode ser aprimorada no backend.",
+          ],
+          detectedSigns: ["Falha na comunicação com a API de vídeo."],
+          recommendation: "Revisar a API e tentar novamente.",
+          nextStep: "Corrigir a integração entre frontend e backend.",
+        });
+        return;
       }
 
-      const attentionLevel = getAttentionLevel(attentionScore);
+      const attentionLevel = getAttentionLevel(data.attentionScore || 0);
 
       setVideoFrames(extracted.frames);
       setVideoResult({
-        classification,
+        classification: data.classification,
         attentionLevel,
-        attentionScore,
+        attentionScore: data.attentionScore,
         fileName,
         fileSize: `${fileSizeMb} MB`,
         duration: `${durationSeconds} s`,
-        observation,
-        frameReadings,
-        detectedSigns,
-        recommendation,
-        nextStep,
+        observation: data.observation,
+        frameReadings: [
+          "Frame 1: use para observar rosto, fundo e nitidez.",
+          "Frame 2: bom ponto intermediário para comparar continuidade visual.",
+          "Frame 3: útil para verificar mudanças bruscas entre cenas.",
+        ],
+        detectedSigns: data.detectedSigns || [],
+        recommendation: data.recommendation,
+        nextStep: data.nextStep,
       });
     } catch (error) {
       setVideoResult({
-        classification: "Não foi possível extrair frames do vídeo.",
+        classification: "Não foi possível extrair ou analisar o vídeo.",
         attentionLevel: "Média",
         attentionScore: 45,
         fileName: videoFile.name,
         fileSize: `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`,
         duration: "-",
         observation:
-          "O navegador encontrou dificuldade para processar esse arquivo no momento.",
+          "O navegador ou a API encontrou dificuldade para processar esse arquivo.",
         frameReadings: [
-          "Não foi possível gerar a leitura dos frames.",
+          "Não foi possível gerar a leitura completa dos frames.",
           "O formato ou a codificação podem exigir tratamento adicional.",
           "Tente um arquivo MP4 simples para validar o fluxo.",
         ],
         detectedSigns: [
-          "Falha na leitura automática do vídeo.",
+          "Falha na leitura automática ou na comunicação com a API.",
           "Formato ou codificação podem exigir tratamento adicional.",
         ],
         recommendation:
-          "Tentar outro vídeo MP4 ou implementar processamento mais robusto no backend.",
+          "Tentar outro vídeo MP4 ou ampliar o processamento no backend.",
         nextStep:
-          "Tentar outro vídeo MP4 ou implementar análise de vídeo no servidor.",
+          "Validar outro arquivo e revisar a integração da API de vídeo.",
       });
       setVideoFrames([]);
     } finally {
