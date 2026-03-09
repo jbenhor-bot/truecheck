@@ -1,149 +1,264 @@
-export async function POST(request) {
-  try {
-    const body = await request.json();
-    const imageUrl = body.imageUrl?.trim();
+"use client";
 
-    if (!imageUrl) {
-      return Response.json(
-        { error: "URL da imagem não enviada." },
-        { status: 400 }
-      );
+import { useState } from "react";
+
+export default function ImageChecker() {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  function handleFileChange(event) {
+    const file = event.target.files?.[0] || null;
+
+    setSelectedFile(file);
+    setResult(null);
+    setError("");
+
+    if (file) {
+      const localPreview = URL.createObjectURL(file);
+      setPreviewUrl(localPreview);
+      setImageUrl("");
+    } else {
+      setPreviewUrl("");
     }
-
-    let parsedUrl;
-
-    try {
-      parsedUrl = new URL(imageUrl);
-    } catch {
-      return Response.json(
-        { error: "URL inválida." },
-        { status: 400 }
-      );
-    }
-
-    const hostname = parsedUrl.hostname.toLowerCase();
-    const pathname = parsedUrl.pathname.toLowerCase();
-    const fullUrl = imageUrl.toLowerCase();
-
-    let aiProbability = 28;
-    let manipulationRisk = 22;
-    let observedSigns = [
-      "A imagem foi recebida por URL para triagem inicial.",
-      "Recomenda-se verificar contexto, data e fonte original.",
-      "A busca reversa continua sendo uma etapa importante da investigação.",
-    ];
-
-    const suspiciousKeywords = [
-      "ai",
-      "generated",
-      "fake",
-      "synthetic",
-      "deepfake",
-      "midjourney",
-      "dalle",
-      "stable-diffusion",
-      "render",
-      "cgi",
-    ];
-
-    const trustworthyDomains = [
-      "wikimedia.org",
-      "wikipedia.org",
-      "gov.br",
-      "bbc.com",
-      "nytimes.com",
-      "reuters.com",
-      "apnews.com",
-    ];
-
-    const socialDomains = [
-      "instagram.com",
-      "facebook.com",
-      "fbcdn.net",
-      "x.com",
-      "twitter.com",
-      "tiktok.com",
-      "reddit.com",
-    ];
-
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"];
-
-    const hasSuspiciousKeyword = suspiciousKeywords.some((word) =>
-      fullUrl.includes(word)
-    );
-
-    const isTrustworthyDomain = trustworthyDomains.some((domain) =>
-      hostname.includes(domain)
-    );
-
-    const isSocialDomain = socialDomains.some((domain) =>
-      hostname.includes(domain)
-    );
-
-    const hasDirectImageExtension = imageExtensions.some((ext) =>
-      pathname.endsWith(ext)
-    );
-
-    if (hasSuspiciousKeyword) {
-      aiProbability += 34;
-      manipulationRisk += 26;
-      observedSigns = [
-        "A URL contém termos frequentemente associados a geração sintética ou edição.",
-        "O conteúdo merece validação adicional antes de qualquer conclusão.",
-        "Convém investigar a origem da imagem e buscar publicações anteriores.",
-      ];
-    }
-
-    if (isSocialDomain) {
-      aiProbability += 12;
-      manipulationRisk += 14;
-      observedSigns.push(
-        "A imagem parece vir de rede social, onde contexto e recorte podem ser alterados."
-      );
-    }
-
-    if (!hasDirectImageExtension) {
-      manipulationRisk += 10;
-      observedSigns.push(
-        "A URL não aparenta apontar diretamente para um arquivo de imagem tradicional."
-      );
-    }
-
-    if (isTrustworthyDomain) {
-      aiProbability -= 10;
-      manipulationRisk -= 8;
-      observedSigns.push(
-        "O domínio parece mais confiável, mas ainda assim a verificação visual é recomendada."
-      );
-    }
-
-    aiProbability = Math.max(5, Math.min(aiProbability, 95));
-    manipulationRisk = Math.max(5, Math.min(manipulationRisk, 95));
-
-    let recommendation =
-      "Compare com a fonte original, verifique o contexto da publicação e use busca reversa para encontrar versões anteriores da imagem.";
-
-    if (aiProbability >= 70 || manipulationRisk >= 70) {
-      recommendation =
-        "A imagem merece atenção reforçada. Verifique fonte original, contexto, publicações anteriores e evite compartilhar antes de confirmar.";
-    } else if (isTrustworthyDomain && aiProbability < 40 && manipulationRisk < 40) {
-      recommendation =
-        "A imagem apresenta menos sinais de risco nesta triagem inicial, mas ainda é recomendado confirmar contexto, data e autoria.";
-    }
-
-    const result = {
-      sourceType: "URL da imagem",
-      aiProbability,
-      manipulationRisk,
-      observedSigns: observedSigns.slice(0, 4),
-      recommendation,
-    };
-
-    return Response.json(result);
-  } catch (error) {
-    return Response.json(
-      { error: "Erro ao analisar a imagem." },
-      { status: 500 }
-    );
   }
+
+  function handleUrlChange(event) {
+    const value = event.target.value;
+    setImageUrl(value);
+    setResult(null);
+    setError("");
+
+    if (value.trim()) {
+      setSelectedFile(null);
+      setPreviewUrl(value);
+    } else if (!selectedFile) {
+      setPreviewUrl("");
+    }
+  }
+
+  async function handleAnalyzeImage() {
+    try {
+      setLoading(true);
+      setError("");
+      setResult(null);
+
+      let response;
+
+      // prioridade para arquivo
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+
+        response = await fetch("/api/analyze-image", {
+          method: "POST",
+          body: formData
+        });
+      } else if (imageUrl.trim()) {
+        response = await fetch("/api/analyze-image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            imageUrl: imageUrl.trim()
+          })
+        });
+      } else {
+        setError("Selecione uma imagem ou cole uma URL.");
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Erro ao analisar imagem.");
+      }
+
+      setResult(data);
+    } catch (err) {
+      setError(err.message || "Erro inesperado.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleClear() {
+    setSelectedFile(null);
+    setImageUrl("");
+    setPreviewUrl("");
+    setResult(null);
+    setError("");
+
+    const fileInput = document.getElementById("image-upload-input");
+    if (fileInput) {
+      fileInput.value = "";
+    }
+  }
+
+  function handleReverseSearch() {
+    const targetUrl = imageUrl.trim() || previewUrl.trim();
+
+    if (!targetUrl.startsWith("http")) {
+      alert("A busca reversa precisa de uma URL pública da imagem.");
+      return;
+    }
+
+    const reverseUrl = `https://images.google.com/searchbyimage?image_url=${encodeURIComponent(
+      targetUrl
+    )}`;
+
+    window.open(reverseUrl, "_blank");
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+      <h2 className="mb-2 text-2xl font-bold text-white">Verificar Imagem</h2>
+
+      <p className="mb-6 text-sm text-white/70">
+        Envie uma imagem ou cole a URL para analisar indícios de geração por IA
+        e manipulação digital.
+      </p>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 className="mb-4 text-xl font-semibold text-white">
+          Entrada da imagem
+        </h3>
+
+        <label className="mb-2 block text-sm font-medium text-white">
+          Enviar imagem
+        </label>
+
+        <input
+          id="image-upload-input"
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="mb-4 block w-full text-sm text-white"
+        />
+
+        <label className="mb-2 block text-sm font-medium text-white">
+          ou cole a URL da imagem
+        </label>
+
+        <input
+          type="text"
+          value={imageUrl}
+          onChange={handleUrlChange}
+          placeholder="https://exemplo.com/minha-imagem.jpg"
+          className="mb-4 w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none"
+        />
+
+        {previewUrl && (
+          <div className="mb-4">
+            <p className="mb-2 text-sm text-white/70">Prévia da imagem</p>
+            <img
+              src={previewUrl}
+              alt="Prévia"
+              className="max-h-80 rounded-xl border border-white/10 object-contain"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleAnalyzeImage}
+            disabled={loading}
+            className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-black disabled:opacity-60"
+          >
+            {loading ? "Analisando..." : "Analisar Imagem"}
+          </button>
+
+          <button
+            onClick={handleReverseSearch}
+            type="button"
+            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
+          >
+            Buscar na internet
+          </button>
+
+          <button
+            onClick={handleClear}
+            type="button"
+            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
+          >
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h3 className="mb-4 text-xl font-semibold text-white">
+            Resultado da análise
+          </h3>
+
+          <div className="space-y-2 text-sm text-white/90">
+            <p>
+              <strong>Origem:</strong> {result.sourceType}
+            </p>
+            <p>
+              <strong>Classificação:</strong> {result.classification}
+            </p>
+            <p>
+              <strong>Nível de atenção:</strong> {result.attentionLevel}
+            </p>
+            <p>
+              <strong>Pontuação:</strong> {result.score}
+            </p>
+
+            {result.file && (
+              <>
+                <p>
+                  <strong>Nome do arquivo:</strong> {result.file.name}
+                </p>
+                <p>
+                  <strong>Tipo:</strong> {result.file.type}
+                </p>
+                <p>
+                  <strong>Tamanho:</strong> {result.file.sizeMB} MB
+                </p>
+              </>
+            )}
+
+            {result.domain && (
+              <p>
+                <strong>Domínio:</strong> {result.domain}
+              </p>
+            )}
+
+            {Array.isArray(result.detectedSignals) &&
+              result.detectedSignals.length > 0 && (
+                <div>
+                  <strong>Sinais detectados:</strong>
+                  <ul className="mt-2 list-disc pl-5">
+                    {result.detectedSignals.map((signal, index) => (
+                      <li key={index}>{signal}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            <p>
+              <strong>Recomendação:</strong> {result.recommendation}
+            </p>
+
+            <p>
+              <strong>Próximo passo:</strong> {result.nextStep}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
