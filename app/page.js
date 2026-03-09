@@ -107,166 +107,222 @@ export default function Page() {
       return;
     }
 
-    const reverseUrl = `https://images.google.com/searchbyimage?image_url=${encodeURIComponent(
-      targetUrl
-    )}`;
+    const reverseUrl =
+      "https://images.google.com/searchbyimage?image_url=" +
+      encodeURIComponent(targetUrl);
 
     window.open(reverseUrl, "_blank");
   }
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-10 text-white">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-8 text-center">
-          <h1 className="mb-3 text-4xl font-bold">TrueCheck</h1>
-          <p className="text-white/70">
-            Verificação inicial de imagem por arquivo ou URL
-          </p>
-        </div>
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#07111f",
+        padding: "40px",
+        color: "white",
+        fontFamily: "system-ui"
+      }}
+    >
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <h1 style={{ fontSize: "38px", marginBottom: "10px" }}>
+          TrueCheck
+        </h1>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
-          <h2 className="mb-2 text-2xl font-bold text-white">
-            Verificar Imagem
-          </h2>
+        <p style={{ color: "#b9c3d4", marginBottom: "30px" }}>
+          Verificação inicial de imagem por arquivo ou URL
+        </p>
 
-          <p className="mb-6 text-sm text-white/70">
-            Envie uma imagem ou cole a URL para analisar indícios de geração por
-            IA e manipulação digital.
-          </p>
+        <div
+          style={{
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "16px",
+            padding: "24px",
+            background: "rgba(255,255,255,0.05)"
+          }}
+        >
+          <h2 style={{ marginBottom: "20px" }}>Verificar Imagem</h2>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h3 className="mb-4 text-xl font-semibold text-white">
-              Entrada da imagem
-            </h3>
+          <label>Enviar imagem</label>
 
-            <label className="mb-2 block text-sm font-medium text-white">
-              Enviar imagem
-            </label>
+          <input
+            id="image-upload-input"
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: "block", marginTop: "10px", marginBottom: "20px" }}
+          />
 
-            <input
-              id="image-upload-input"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="mb-4 block w-full text-sm text-white"
-            />
+          <label>ou cole a URL da imagem</label>
 
-            <label className="mb-2 block text-sm font-medium text-white">
-              ou cole a URL da imagem
-            </label>
+          <input
+            type="text"
+            value={imageUrl}
+            onChange={handleUrlChange}
+            placeholder="https://exemplo.com/imagem.jpg"
+            style={{
+              width: "100%",
+              padding: "10px",
+              marginTop: "10px",
+              marginBottom: "20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.08)",
+              color: "white"
+            }}
+          />
 
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={handleUrlChange}
-              placeholder="https://exemplo.com/minha-imagem.jpg"
-              className="mb-4 w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none"
-            />
+          {previewUrl && (
+            <div style={{ marginBottom: "20px" }}>
+              <p>Prévia da imagem</p>
 
-            {previewUrl && (
-              <div className="mb-4">
-                <p className="mb-2 text-sm text-white/70">Prévia da imagem</p>
-                <img
-                  src={previewUrl}
-                  alt="Prévia"
-                  className="max-h-80 rounded-xl border border-white/10 object-contain"
-                />
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleAnalyzeImage}
-                disabled={loading}
-                className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-black disabled:opacity-60"
-              >
-                {loading ? "Analisando..." : "Analisar Imagem"}
-              </button>
-
-              <button
-                onClick={handleReverseSearch}
-                type="button"
-                className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
-              >
-                Buscar na internet
-              </button>
-
-              <button
-                onClick={handleClear}
-                type="button"
-                className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
-              >
-                Limpar
-              </button>
+              <img
+                src={previewUrl}
+                alt="preview"
+                style={{
+                  maxHeight: "350px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(255,255,255,0.1)"
+                }}
+              />
             </div>
+          )}
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              onClick={handleAnalyzeImage}
+              disabled={loading}
+              style={{
+                background: "#06b6d4",
+                border: "none",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              {loading ? "Analisando..." : "Analisar Imagem"}
+            </button>
+
+            <button
+              onClick={handleReverseSearch}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                color: "white"
+              }}
+            >
+              Buscar na internet
+            </button>
+
+            <button
+              onClick={handleClear}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                padding: "12px 20px",
+                borderRadius: "10px",
+                color: "white"
+              }}
+            >
+              Limpar
+            </button>
           </div>
 
           {error && (
-            <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">
+            <div
+              style={{
+                marginTop: "20px",
+                background: "rgba(255,0,0,0.15)",
+                padding: "12px",
+                borderRadius: "10px"
+              }}
+            >
               {error}
             </div>
           )}
 
           {result && (
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-              <h3 className="mb-4 text-xl font-semibold text-white">
-                Resultado da análise
-              </h3>
+            <div
+              style={{
+                marginTop: "25px",
+                padding: "20px",
+                borderRadius: "12px",
+                background: "rgba(255,255,255,0.05)"
+              }}
+            >
+              <h3>Resultado da análise</h3>
 
-              <div className="space-y-2 text-sm text-white/90">
-                <p>
-                  <strong>Origem:</strong> {result.sourceType}
-                </p>
-                <p>
-                  <strong>Classificação:</strong> {result.classification}
-                </p>
-                <p>
-                  <strong>Nível de atenção:</strong> {result.attentionLevel}
-                </p>
-                <p>
-                  <strong>Pontuação:</strong> {result.score}
-                </p>
+              <p><strong>Origem:</strong> {result.sourceType}</p>
+              <p><strong>Classificação:</strong> {result.classification}</p>
+              <p><strong>Nível de atenção:</strong> {result.attentionLevel}</p>
+              <p><strong>Pontuação:</strong> {result.score}</p>
 
-                {result.file && (
-                  <>
-                    <p>
-                      <strong>Nome do arquivo:</strong> {result.file.name}
-                    </p>
-                    <p>
-                      <strong>Tipo:</strong> {result.file.type}
-                    </p>
-                    <p>
-                      <strong>Tamanho:</strong> {result.file.sizeMB} MB
-                    </p>
-                  </>
-                )}
+              {result.file && (
+                <>
+                  <p><strong>Arquivo:</strong> {result.file.name}</p>
+                  <p><strong>Tipo:</strong> {result.file.type}</p>
+                  <p><strong>Tamanho:</strong> {result.file.sizeMB} MB</p>
+                </>
+              )}
 
-                {result.domain && (
-                  <p>
-                    <strong>Domínio:</strong> {result.domain}
-                  </p>
-                )}
+              {/* EXIF */}
+              {result.exif && (
+                <div style={{ marginTop: "15px" }}>
+                  <strong>Metadados EXIF:</strong>
 
-                {Array.isArray(result.detectedSignals) &&
-                  result.detectedSignals.length > 0 && (
-                    <div>
-                      <strong>Sinais detectados:</strong>
-                      <ul className="mt-2 list-disc pl-5">
-                        {result.detectedSignals.map((signal, index) => (
-                          <li key={index}>{signal}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <ul>
+                    {result.exif.make && (
+                      <li>Marca: {result.exif.make}</li>
+                    )}
 
-                <p>
-                  <strong>Recomendação:</strong> {result.recommendation}
-                </p>
+                    {result.exif.model && (
+                      <li>Modelo: {result.exif.model}</li>
+                    )}
 
-                <p>
-                  <strong>Próximo passo:</strong> {result.nextStep}
-                </p>
-              </div>
+                    {result.exif.software && (
+                      <li>Software: {result.exif.software}</li>
+                    )}
+
+                    {result.exif.dateTimeOriginal && (
+                      <li>
+                        Data original:{" "}
+                        {String(result.exif.dateTimeOriginal)}
+                      </li>
+                    )}
+
+                    {result.exif.latitude &&
+                      result.exif.longitude && (
+                        <li>
+                          GPS: {result.exif.latitude},{" "}
+                          {result.exif.longitude}
+                        </li>
+                      )}
+                  </ul>
+                </div>
+              )}
+
+              {result.detectedSignals && (
+                <div style={{ marginTop: "15px" }}>
+                  <strong>Sinais detectados:</strong>
+
+                  <ul>
+                    {result.detectedSignals.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p style={{ marginTop: "10px" }}>
+                <strong>Recomendação:</strong> {result.recommendation}
+              </p>
+
+              <p>
+                <strong>Próximo passo:</strong> {result.nextStep}
+              </p>
             </div>
           )}
         </div>
