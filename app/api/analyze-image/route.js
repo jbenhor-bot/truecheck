@@ -1,3 +1,5 @@
+import { analyzeExif } from "../../../lib/image/exifAnalyzer";
+
 export async function POST(req) {
   try {
     const contentType = req.headers.get("content-type") || "";
@@ -21,26 +23,51 @@ export async function POST(req) {
       const sizeInBytes = bytes.byteLength;
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
 
+      const exifResult = await analyzeExif(image);
+
+      let baseScore = 35;
+      let finalScore = baseScore + exifResult.exifScore;
+
+      if (finalScore > 100) finalScore = 100;
+      if (finalScore < 0) finalScore = 0;
+
+      let attentionLevel = "baixo";
+      if (finalScore >= 70) {
+        attentionLevel = "alto";
+      } else if (finalScore >= 40) {
+        attentionLevel = "médio";
+      }
+
+      let classification = "baixo risco inicial";
+      if (finalScore >= 70) {
+        classification = "requer atenção";
+      } else if (finalScore >= 40) {
+        classification = "análise inicial concluída";
+      }
+
+      const detectedSignals = [
+        "Arquivo recebido com sucesso",
+        "Upload por arquivo funcionando",
+        ...exifResult.exifSignals
+      ];
+
       return Response.json({
         ok: true,
         sourceType: "file",
-        classification: "análise inicial concluída",
-        attentionLevel: "médio",
-        score: 55,
+        classification,
+        attentionLevel,
+        score: finalScore,
         file: {
           name: image.name,
           type: image.type,
           sizeBytes: sizeInBytes,
           sizeMB: sizeInMB
         },
-        detectedSignals: [
-          "arquivo recebido com sucesso",
-          "upload por arquivo funcionando",
-          "backend pronto para próxima etapa de análise"
-        ],
+        exif: exifResult.exifData,
+        detectedSignals,
         recommendation:
-          "O arquivo foi enviado corretamente. Agora a próxima evolução é analisar metadados, conteúdo visual e sinais de geração por IA.",
-        nextStep: "Conectar motor de análise de imagem."
+          "A imagem já passou por triagem de metadados. O próximo passo é combinar EXIF, sinais visuais e detecção de geração por IA.",
+        nextStep: "Conectar detector visual e score engine."
       });
     }
 
@@ -98,8 +125,8 @@ export async function POST(req) {
         domain,
         detectedSignals:
           foundWords.length > 0
-            ? [`palavras suspeitas na URL: ${foundWords.join(", ")}`]
-            : ["nenhum sinal forte encontrado na URL"],
+            ? [`Palavras suspeitas na URL: ${foundWords.join(", ")}`]
+            : ["Nenhum sinal forte encontrado na URL"],
         recommendation:
           foundWords.length > 0
             ? "Fazer verificação mais profunda, incluindo busca reversa e análise visual."
