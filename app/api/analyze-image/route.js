@@ -1,264 +1,129 @@
-"use client";
+export async function POST(req) {
+  try {
+    const contentType = req.headers.get("content-type") || "";
 
-import { useState } from "react";
+    // CASO 1: envio por arquivo
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData();
+      const image = formData.get("image");
 
-export default function ImageChecker() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
-
-  function handleFileChange(event) {
-    const file = event.target.files?.[0] || null;
-
-    setSelectedFile(file);
-    setResult(null);
-    setError("");
-
-    if (file) {
-      const localPreview = URL.createObjectURL(file);
-      setPreviewUrl(localPreview);
-      setImageUrl("");
-    } else {
-      setPreviewUrl("");
-    }
-  }
-
-  function handleUrlChange(event) {
-    const value = event.target.value;
-    setImageUrl(value);
-    setResult(null);
-    setError("");
-
-    if (value.trim()) {
-      setSelectedFile(null);
-      setPreviewUrl(value);
-    } else if (!selectedFile) {
-      setPreviewUrl("");
-    }
-  }
-
-  async function handleAnalyzeImage() {
-    try {
-      setLoading(true);
-      setError("");
-      setResult(null);
-
-      let response;
-
-      // prioridade para arquivo
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("image", selectedFile);
-
-        response = await fetch("/api/analyze-image", {
-          method: "POST",
-          body: formData
-        });
-      } else if (imageUrl.trim()) {
-        response = await fetch("/api/analyze-image", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
+      if (!image) {
+        return Response.json(
+          {
+            ok: false,
+            error: "Nenhuma imagem enviada."
           },
-          body: JSON.stringify({
-            imageUrl: imageUrl.trim()
-          })
-        });
-      } else {
-        setError("Selecione uma imagem ou cole uma URL.");
-        setLoading(false);
-        return;
+          { status: 400 }
+        );
       }
 
-      const data = await response.json();
+      const bytes = await image.arrayBuffer();
+      const sizeInBytes = bytes.byteLength;
+      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
 
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Erro ao analisar imagem.");
+      return Response.json({
+        ok: true,
+        sourceType: "file",
+        classification: "análise inicial concluída",
+        attentionLevel: "médio",
+        score: 55,
+        file: {
+          name: image.name,
+          type: image.type,
+          sizeBytes: sizeInBytes,
+          sizeMB: sizeInMB
+        },
+        detectedSignals: [
+          "arquivo recebido com sucesso",
+          "upload por arquivo funcionando",
+          "backend pronto para próxima etapa de análise"
+        ],
+        recommendation:
+          "O arquivo foi enviado corretamente. Agora a próxima evolução é analisar metadados, conteúdo visual e sinais de geração por IA.",
+        nextStep: "Conectar motor de análise de imagem."
+      });
+    }
+
+    // CASO 2: envio por URL
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      const imageUrl = body.imageUrl?.trim();
+
+      if (!imageUrl) {
+        return Response.json(
+          {
+            ok: false,
+            error: "URL da imagem não informada."
+          },
+          { status: 400 }
+        );
       }
 
-      setResult(data);
-    } catch (err) {
-      setError(err.message || "Erro inesperado.");
-    } finally {
-      setLoading(false);
+      let domain = "desconhecido";
+
+      try {
+        domain = new URL(imageUrl).hostname;
+      } catch (error) {
+        return Response.json(
+          {
+            ok: false,
+            error: "URL inválida."
+          },
+          { status: 400 }
+        );
+      }
+
+      const suspiciousWords = [
+        "generated",
+        "ai",
+        "fake",
+        "edited",
+        "midjourney",
+        "dalle",
+        "stable-diffusion"
+      ];
+
+      const foundWords = suspiciousWords.filter((word) =>
+        imageUrl.toLowerCase().includes(word)
+      );
+
+      return Response.json({
+        ok: true,
+        sourceType: "url",
+        classification:
+          foundWords.length > 0 ? "suspeita inicial" : "análise inicial concluída",
+        attentionLevel: foundWords.length > 0 ? "alto" : "baixo",
+        score: foundWords.length > 0 ? 75 : 25,
+        url: imageUrl,
+        domain,
+        detectedSignals:
+          foundWords.length > 0
+            ? [`palavras suspeitas na URL: ${foundWords.join(", ")}`]
+            : ["nenhum sinal forte encontrado na URL"],
+        recommendation:
+          foundWords.length > 0
+            ? "Fazer verificação mais profunda, incluindo busca reversa e análise visual."
+            : "A URL não apresentou sinais fortes nesta triagem inicial.",
+        nextStep: "Conectar verificações externas e análise visual."
+      });
     }
+
+    return Response.json(
+      {
+        ok: false,
+        error: "Tipo de requisição não suportado."
+      },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("Erro em /api/analyze-image:", error);
+
+    return Response.json(
+      {
+        ok: false,
+        error: "Erro interno ao analisar imagem."
+      },
+      { status: 500 }
+    );
   }
-
-  function handleClear() {
-    setSelectedFile(null);
-    setImageUrl("");
-    setPreviewUrl("");
-    setResult(null);
-    setError("");
-
-    const fileInput = document.getElementById("image-upload-input");
-    if (fileInput) {
-      fileInput.value = "";
-    }
-  }
-
-  function handleReverseSearch() {
-    const targetUrl = imageUrl.trim() || previewUrl.trim();
-
-    if (!targetUrl.startsWith("http")) {
-      alert("A busca reversa precisa de uma URL pública da imagem.");
-      return;
-    }
-
-    const reverseUrl = `https://images.google.com/searchbyimage?image_url=${encodeURIComponent(
-      targetUrl
-    )}`;
-
-    window.open(reverseUrl, "_blank");
-  }
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
-      <h2 className="mb-2 text-2xl font-bold text-white">Verificar Imagem</h2>
-
-      <p className="mb-6 text-sm text-white/70">
-        Envie uma imagem ou cole a URL para analisar indícios de geração por IA
-        e manipulação digital.
-      </p>
-
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-4 text-xl font-semibold text-white">
-          Entrada da imagem
-        </h3>
-
-        <label className="mb-2 block text-sm font-medium text-white">
-          Enviar imagem
-        </label>
-
-        <input
-          id="image-upload-input"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="mb-4 block w-full text-sm text-white"
-        />
-
-        <label className="mb-2 block text-sm font-medium text-white">
-          ou cole a URL da imagem
-        </label>
-
-        <input
-          type="text"
-          value={imageUrl}
-          onChange={handleUrlChange}
-          placeholder="https://exemplo.com/minha-imagem.jpg"
-          className="mb-4 w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none"
-        />
-
-        {previewUrl && (
-          <div className="mb-4">
-            <p className="mb-2 text-sm text-white/70">Prévia da imagem</p>
-            <img
-              src={previewUrl}
-              alt="Prévia"
-              className="max-h-80 rounded-xl border border-white/10 object-contain"
-            />
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={handleAnalyzeImage}
-            disabled={loading}
-            className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-black disabled:opacity-60"
-          >
-            {loading ? "Analisando..." : "Analisar Imagem"}
-          </button>
-
-          <button
-            onClick={handleReverseSearch}
-            type="button"
-            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
-          >
-            Buscar na internet
-          </button>
-
-          <button
-            onClick={handleClear}
-            type="button"
-            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 font-semibold text-white"
-          >
-            Limpar
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">
-          {error}
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h3 className="mb-4 text-xl font-semibold text-white">
-            Resultado da análise
-          </h3>
-
-          <div className="space-y-2 text-sm text-white/90">
-            <p>
-              <strong>Origem:</strong> {result.sourceType}
-            </p>
-            <p>
-              <strong>Classificação:</strong> {result.classification}
-            </p>
-            <p>
-              <strong>Nível de atenção:</strong> {result.attentionLevel}
-            </p>
-            <p>
-              <strong>Pontuação:</strong> {result.score}
-            </p>
-
-            {result.file && (
-              <>
-                <p>
-                  <strong>Nome do arquivo:</strong> {result.file.name}
-                </p>
-                <p>
-                  <strong>Tipo:</strong> {result.file.type}
-                </p>
-                <p>
-                  <strong>Tamanho:</strong> {result.file.sizeMB} MB
-                </p>
-              </>
-            )}
-
-            {result.domain && (
-              <p>
-                <strong>Domínio:</strong> {result.domain}
-              </p>
-            )}
-
-            {Array.isArray(result.detectedSignals) &&
-              result.detectedSignals.length > 0 && (
-                <div>
-                  <strong>Sinais detectados:</strong>
-                  <ul className="mt-2 list-disc pl-5">
-                    {result.detectedSignals.map((signal, index) => (
-                      <li key={index}>{signal}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-            <p>
-              <strong>Recomendação:</strong> {result.recommendation}
-            </p>
-
-            <p>
-              <strong>Próximo passo:</strong> {result.nextStep}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
