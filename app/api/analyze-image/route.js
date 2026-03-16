@@ -1,4 +1,5 @@
 import { analyzeExif } from "../../../lib/image/exifAnalyzer";
+import { analyzeVisual } from "../../../lib/image/visualDetector";
 
 export async function POST(req) {
   try {
@@ -20,13 +21,20 @@ export async function POST(req) {
       }
 
       const bytes = await image.arrayBuffer();
+      const buffer = Buffer.from(bytes);
       const sizeInBytes = bytes.byteLength;
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
 
       const exifResult = await analyzeExif(image);
 
-      let baseScore = 35;
-      let finalScore = baseScore + exifResult.exifScore;
+      const hasExif =
+        !!exifResult?.exifData && Object.keys(exifResult.exifData).length > 0;
+
+      const visualResult = await analyzeVisual(buffer, hasExif);
+
+      let baseScore = 20;
+      let finalScore =
+        baseScore + exifResult.exifScore + visualResult.visualScore;
 
       if (finalScore > 100) finalScore = 100;
       if (finalScore < 0) finalScore = 0;
@@ -48,7 +56,8 @@ export async function POST(req) {
       const detectedSignals = [
         "Arquivo recebido com sucesso",
         "Upload por arquivo funcionando",
-        ...exifResult.exifSignals
+        ...(exifResult.exifSignals || []),
+        ...(visualResult.notes || [])
       ];
 
       return Response.json({
@@ -63,11 +72,22 @@ export async function POST(req) {
           sizeBytes: sizeInBytes,
           sizeMB: sizeInMB
         },
-        exif: exifResult.exifData,
+        exif: {
+          score: exifResult.exifScore,
+          data: exifResult.exifData,
+          signals: exifResult.exifSignals || []
+        },
+        visual: {
+          score: visualResult.visualScore,
+          verdict: visualResult.verdict,
+          textureStd: visualResult.textureStd,
+          metrics: visualResult.metrics,
+          notes: visualResult.notes
+        },
         detectedSignals,
         recommendation:
-          "A imagem já passou por triagem de metadados. O próximo passo é combinar EXIF, sinais visuais e detecção de geração por IA.",
-        nextStep: "Conectar detector visual e score engine."
+          "A imagem passou por triagem de metadados e análise visual inicial. O próximo passo é combinar EXIF, sinais visuais e score engine.",
+        nextStep: "Conectar score engine e exibir resultado visual no frontend."
       });
     }
 
@@ -148,7 +168,8 @@ export async function POST(req) {
     return Response.json(
       {
         ok: false,
-        error: "Erro interno ao analisar imagem."
+        error: "Erro interno ao analisar imagem.",
+        details: error.message
       },
       { status: 500 }
     );
