@@ -147,14 +147,6 @@ export default function Page() {
     }
   }
 
-  function buildVideoPayload(file) {
-    return {
-      fileName: file?.name || "",
-      fileSize: file?.size || 0,
-      duration: 0
-    };
-  }
-
   async function callImageRoute({ file, url }) {
     let response;
 
@@ -208,29 +200,30 @@ export default function Page() {
   }
 
   async function callVideoRoute({ file, url }) {
-    let payload = {
-      fileName: "",
-      fileSize: 0,
-      duration: 0
-    };
+    let response;
 
     if (file) {
-      payload = buildVideoPayload(file);
-    } else if (url) {
-      payload = {
-        fileName: url,
-        fileSize: 0,
-        duration: 0
-      };
-    }
+      const formData = new FormData();
+      formData.append("video", file);
 
-    const response = await fetch("/api/analyze-video", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+      response = await fetch("/api/analyze-video", {
+        method: "POST",
+        body: formData
+      });
+    } else {
+      response = await fetch("/api/analyze-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          videoUrl: url,
+          fileName: url,
+          fileSize: 0,
+          duration: 0
+        })
+      });
+    }
 
     const data = await response.json();
 
@@ -1048,6 +1041,73 @@ export default function Page() {
                           label="TextureStd"
                           value={result.visual.textureStd}
                         />
+                      </div>
+                    )}
+
+                    {result.scores && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Score técnico
+                        </div>
+                        <TechItem label="Base" value={result.scores.baseScore} />
+                        <TechItem
+                          label="Frames"
+                          value={result.scores.frameScore}
+                        />
+                        <TechItem
+                          label="Transformação"
+                          value={result.scores.transformationScore}
+                        />
+                        <TechItem
+                          label="Consistência"
+                          value={result.scores.consistencyScore}
+                        />
+                      </div>
+                    )}
+
+                    {result.technicalScope && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Escopo técnico
+                        </div>
+                        <TechItem
+                          label="Frames analisados"
+                          value={
+                            result.technicalScope.framesAnalyzed ? "Sim" : "Não"
+                          }
+                        />
+                        <TechItem
+                          label="Áudio analisado"
+                          value={
+                            result.technicalScope.audioAnalyzed ? "Sim" : "Não"
+                          }
+                        />
+                        <TechItem
+                          label="Link social detectado"
+                          value={
+                            result.technicalScope.socialLinkDetected ? "Sim" : "Não"
+                          }
+                        />
+                        {"heuristicOnly" in result.technicalScope && (
+                          <TechItem
+                            label="Apenas heurística"
+                            value={
+                              result.technicalScope.heuristicOnly ? "Sim" : "Não"
+                            }
+                          />
+                        )}
                       </div>
                     )}
 
