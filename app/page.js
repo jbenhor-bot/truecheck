@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Page() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -13,11 +13,27 @@ export default function Page() {
   const [error, setError] = useState("");
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   function detectFileKind(file) {
     if (!file) return "";
 
     if (file.type.startsWith("image/")) return "image";
     if (file.type.startsWith("video/")) return "video";
+    if (
+      file.type.startsWith("text/") ||
+      file.name.endsWith(".txt") ||
+      file.name.endsWith(".md")
+    ) {
+      return "text";
+    }
+
     return "file";
   }
 
@@ -36,14 +52,15 @@ export default function Page() {
       lower.includes("tiktok.com") ||
       lower.includes("instagram.com/reel") ||
       lower.includes("instagram.com/p/") ||
-      lower.includes("facebook.com") ||
+      lower.includes("facebook.com/watch") ||
+      lower.includes("facebook.com/reel") ||
       lower.includes("x.com") ||
       lower.includes("twitter.com")
     ) {
-      return "media";
+      return "video";
     }
 
-    return "url";
+    return "image";
   }
 
   function inferInputType({ file, url, text }) {
@@ -55,6 +72,10 @@ export default function Page() {
 
   function handleFileChange(event) {
     const file = event.target.files?.[0] || null;
+
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
 
     setSelectedFile(file);
     setResult(null);
@@ -83,6 +104,10 @@ export default function Page() {
   function handleUrlChange(event) {
     const value = event.target.value;
 
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setContentUrl(value);
     setResult(null);
     setError("");
@@ -96,12 +121,16 @@ export default function Page() {
       setPreviewUrl(kind === "image" ? value.trim() : "");
     } else {
       setPreviewUrl("");
-      setDetectedInputType(selectedFile ? detectFileKind(selectedFile) : "");
+      setDetectedInputType("");
     }
   }
 
   function handleTextChange(event) {
     const value = event.target.value;
+
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
 
     setTextContent(value);
     setResult(null);
@@ -116,6 +145,100 @@ export default function Page() {
     } else {
       setDetectedInputType("");
     }
+  }
+
+  function buildVideoPayload(file) {
+    return {
+      fileName: file?.name || "",
+      fileSize: file?.size || 0,
+      duration: 0
+    };
+  }
+
+  async function callImageRoute({ file, url }) {
+    let response;
+
+    if (file) {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      response = await fetch("/api/analyze-image", {
+        method: "POST",
+        body: formData
+      });
+    } else {
+      response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          imageUrl: url
+        })
+      });
+    }
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Erro ao analisar imagem.");
+    }
+
+    return data;
+  }
+
+  async function callTextRoute(text) {
+    const response = await fetch("/api/analyze-text", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Erro ao analisar texto.");
+    }
+
+    return data;
+  }
+
+  async function callVideoRoute({ file, url }) {
+    let payload = {
+      fileName: "",
+      fileSize: 0,
+      duration: 0
+    };
+
+    if (file) {
+      payload = buildVideoPayload(file);
+    } else if (url) {
+      payload = {
+        fileName: url,
+        fileSize: 0,
+        duration: 0
+      };
+    }
+
+    const response = await fetch("/api/analyze-video", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || "Erro ao analisar vídeo.");
+    }
+
+    return data;
   }
 
   async function handleAnalyzeContent() {
@@ -137,46 +260,22 @@ export default function Page() {
         return;
       }
 
-      let response;
+      let data;
 
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("contentType", inputType);
-
-        response = await fetch("/api/analyze-image", {
-          method: "POST",
-          body: formData
+      if (inputType === "text") {
+        data = await callTextRoute(textContent.trim());
+      } else if (inputType === "video") {
+        data = await callVideoRoute({
+          file: selectedFile,
+          url: contentUrl.trim()
         });
-      } else if (contentUrl.trim()) {
-        response = await fetch("/api/analyze-image", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            contentUrl: contentUrl.trim(),
-            imageUrl: contentUrl.trim(),
-            contentType: inputType
-          })
+      } else if (inputType === "image") {
+        data = await callImageRoute({
+          file: selectedFile,
+          url: contentUrl.trim()
         });
-      } else if (textContent.trim()) {
-        response = await fetch("/api/analyze-image", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            text: textContent.trim(),
-            contentType: "text"
-          })
-        });
-      }
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Erro ao analisar conteúdo.");
+      } else {
+        throw new Error("Tipo de conteúdo ainda não suportado.");
       }
 
       setResult({
@@ -191,6 +290,10 @@ export default function Page() {
   }
 
   function handleClear() {
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setSelectedFile(null);
     setContentUrl("");
     setTextContent("");
@@ -226,10 +329,10 @@ export default function Page() {
   const riskUi = useMemo(() => {
     if (scoreValue <= 40) {
       return {
-        label: "ALTO RISCO",
-        color: "#ef4444",
-        softBg: "rgba(239,68,68,0.12)",
-        border: "rgba(239,68,68,0.35)"
+        label: "BAIXO RISCO",
+        color: "#22c55e",
+        softBg: "rgba(34,197,94,0.12)",
+        border: "rgba(34,197,94,0.35)"
       };
     }
 
@@ -243,10 +346,10 @@ export default function Page() {
     }
 
     return {
-      label: "BAIXO RISCO",
-      color: "#22c55e",
-      softBg: "rgba(34,197,94,0.12)",
-      border: "rgba(34,197,94,0.35)"
+      label: "ALTO RISCO",
+      color: "#ef4444",
+      softBg: "rgba(239,68,68,0.12)",
+      border: "rgba(239,68,68,0.35)"
     };
   }, [scoreValue]);
 
@@ -256,14 +359,14 @@ export default function Page() {
     if (type === "image") return "Imagem";
     if (type === "video") return "Vídeo";
     if (type === "text") return "Texto";
-    if (type === "media") return "Mídia";
-    if (type === "url") return "Link";
     return "Conteúdo";
   }, [result, detectedInputType]);
 
   const canShowReverseSearch =
-    (contentUrl.trim().startsWith("http") && detectedInputType !== "text") ||
-    (previewUrl && previewUrl.startsWith("http"));
+    Boolean(contentUrl.trim().startsWith("http")) &&
+    (detectedInputType === "image" || detectedInputType === "video");
+
+  const exifData = result?.exif?.data || {};
 
   return (
     <main
@@ -370,7 +473,7 @@ export default function Page() {
             <input
               id="content-upload-input"
               type="file"
-              accept="image/*,video/*,.txt,.md,.json"
+              accept="image/*,video/*,.txt,.md"
               onChange={handleFileChange}
               style={{
                 display: "block",
@@ -718,6 +821,31 @@ export default function Page() {
                   />
                 </div>
 
+                {result.summary && (
+                  <div
+                    style={{
+                      padding: "16px",
+                      borderRadius: "16px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      marginBottom: "16px"
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        marginBottom: "8px",
+                        fontSize: "16px"
+                      }}
+                    >
+                      Resumo
+                    </div>
+                    <div style={{ color: "#d9e3f0", lineHeight: 1.7 }}>
+                      {result.summary}
+                    </div>
+                  </div>
+                )}
+
                 <div
                   style={{
                     padding: "16px",
@@ -805,9 +933,7 @@ export default function Page() {
                 </div>
 
                 <button
-                  onClick={() =>
-                    setShowTechnicalDetails(!showTechnicalDetails)
-                  }
+                  onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
                   style={{
                     width: "100%",
                     background: "rgba(255,255,255,0.06)",
@@ -855,6 +981,25 @@ export default function Page() {
                       </div>
                     )}
 
+                    {result.sourceType && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Origem
+                        </div>
+                        <TechItem label="SourceType" value={result.sourceType} />
+                        {result.domain && (
+                          <TechItem label="Domínio" value={result.domain} />
+                        )}
+                        {result.url && <TechItem label="URL" value={result.url} />}
+                      </div>
+                    )}
+
                     {result.exif && (
                       <div style={{ marginBottom: "16px" }}>
                         <div
@@ -867,23 +1012,41 @@ export default function Page() {
                           Metadados EXIF
                         </div>
 
-                        <TechItem label="Marca" value={result.exif.make} />
-                        <TechItem label="Modelo" value={result.exif.model} />
-                        <TechItem
-                          label="Software"
-                          value={result.exif.software}
-                        />
+                        <TechItem label="Score EXIF" value={result.exif.score} />
+                        <TechItem label="Marca" value={exifData.make} />
+                        <TechItem label="Modelo" value={exifData.model} />
+                        <TechItem label="Software" value={exifData.software} />
                         <TechItem
                           label="Data original"
-                          value={String(result.exif.dateTimeOriginal || "—")}
+                          value={exifData.dateTimeOriginal}
                         />
                         <TechItem
                           label="GPS"
                           value={
-                            result.exif.latitude && result.exif.longitude
-                              ? `${result.exif.latitude}, ${result.exif.longitude}`
+                            exifData.latitude && exifData.longitude
+                              ? `${exifData.latitude}, ${exifData.longitude}`
                               : "—"
                           }
+                        />
+                      </div>
+                    )}
+
+                    {result.visual && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Análise visual
+                        </div>
+                        <TechItem label="Score visual" value={result.visual.score} />
+                        <TechItem label="Veredito" value={result.visual.verdict} />
+                        <TechItem
+                          label="TextureStd"
+                          value={result.visual.textureStd}
                         />
                       </div>
                     )}
@@ -969,7 +1132,14 @@ function TechItem({ label, value }) {
       }}
     >
       <span style={{ color: "#9fb0c7" }}>{label}</span>
-      <span style={{ color: "#f8fafc", textAlign: "right" }}>
+      <span
+        style={{
+          color: "#f8fafc",
+          textAlign: "right",
+          wordBreak: "break-word",
+          maxWidth: "60%"
+        }}
+      >
         {value || "—"}
       </span>
     </div>
