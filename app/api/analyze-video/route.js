@@ -6,20 +6,22 @@ export async function POST(request) {
     const fileSize = Number(body.fileSize || 0);
     const duration = Number(body.duration || 0);
 
-    let attentionScore = 28;
-    let classification = "Vídeo recebido para triagem inicial.";
-    let observation =
+    let score = 28;
+    let attentionLevel = "baixo";
+    let classification = "vídeo recebido para triagem inicial";
+    let summary =
       "A análise inicial considera nome do arquivo, duração e tamanho do vídeo.";
-    let detectedSigns = [
-      "Triagem inicial baseada em metadados enviados pelo navegador.",
-      "O vídeo ainda precisa de análise visual mais profunda.",
-      "A origem e o contexto continuam sendo fundamentais.",
-    ];
     let recommendation =
       "Use esta etapa como triagem inicial. O ideal é complementar com revisão quadro a quadro e checagem da origem.";
     let nextStep =
-      "Próximo passo: ampliar a análise de frames, áudio e contexto do vídeo.";
+      "Ampliar a análise com extração de frames, verificação de cortes e avaliação de consistência visual.";
+    const detectedSignals = [
+      "Triagem inicial baseada em metadados enviados pelo navegador",
+      "Análise visual profunda ainda não executada",
+      "Contexto e origem do vídeo ainda precisam ser verificados"
+    ];
 
+    // sinais fortes no nome do arquivo
     if (
       fileName.includes("deepfake") ||
       fileName.includes("fake") ||
@@ -27,60 +29,75 @@ export async function POST(request) {
       fileName.includes("edited") ||
       fileName.includes("synthetic")
     ) {
-      attentionScore = 76;
-      classification = "Vídeo com indícios que exigem atenção reforçada.";
-      observation =
+      score = 76;
+      attentionLevel = "alto";
+      classification = "vídeo com indícios que exigem atenção reforçada";
+      summary =
         "O nome do arquivo sugere possível manipulação, geração sintética ou deepfake.";
-      detectedSigns = [
-        "O nome do arquivo sugere possível conteúdo manipulado.",
-        "É recomendada análise detalhada de rosto, cortes e sincronização.",
-        "A origem do vídeo deve ser validada antes de compartilhamento.",
-      ];
       recommendation =
-        "Evite compartilhar antes de validar a fonte, comparar versões e revisar os frames extraídos.";
+        "Evite compartilhar antes de validar a fonte e revisar o conteúdo quadro a quadro.";
       nextStep =
-        "Próximo passo: análise aprofundada de deepfake, cortes e consistência visual.";
-    } else if (fileSize > 50 * 1024 * 1024) {
-      attentionScore = 52;
-      classification = "Vídeo grande recebido para análise técnica.";
-      observation =
-        "Arquivos maiores podem preservar mais detalhes úteis para investigação.";
-      detectedSigns = [
-        "O vídeo possui tamanho suficiente para preservar mais informação visual.",
-        "Pode ser útil analisar compressão, continuidade e contexto.",
-        "A análise completa deve incluir revisão visual e comparação externa.",
-      ];
+        "Executar análise aprofundada de deepfake, sincronização labial e continuidade visual.";
+
+      detectedSignals.push(
+        "O nome do arquivo sugere possível conteúdo manipulado ou sintético"
+      );
+    }
+
+    // arquivo grande
+    else if (fileSize > 50 * 1024 * 1024) {
+      score = 52;
+      attentionLevel = "médio";
+      classification = "vídeo técnico com necessidade de revisão detalhada";
+      summary =
+        "Arquivos maiores preservam mais detalhes úteis para investigação técnica.";
       recommendation =
-        "Aproveitar a maior riqueza visual do arquivo para uma inspeção técnica mais detalhada.";
+        "Aproveitar a maior qualidade visual para inspeção de compressão e cortes.";
       nextStep =
-        "Próximo passo: aprofundar a análise de frames e sinais de edição.";
-    } else if (duration > 20) {
-      attentionScore = 46;
-      classification = "Vídeo mais longo com necessidade de revisão gradual.";
-      observation =
+        "Extrair frames estratégicos e analisar consistência visual ao longo do vídeo.";
+
+      detectedSignals.push(
+        "O vídeo possui tamanho elevado, podendo conter maior riqueza de detalhes visuais"
+      );
+    }
+
+    // vídeo longo
+    else if (duration > 20) {
+      score = 46;
+      attentionLevel = "médio";
+      classification = "vídeo mais longo com necessidade de revisão gradual";
+      summary =
         "Vídeos mais longos podem esconder sinais de manipulação em trechos específicos.";
-      detectedSigns = [
-        "A duração maior pede revisão por trechos.",
-        "Os frames iniciais ajudam, mas não substituem análise completa.",
-        "É recomendável verificar cenas adicionais fora da triagem inicial.",
-      ];
       recommendation =
-        "Extrair mais quadros ao longo do vídeo para ampliar a cobertura da análise.";
+        "Realizar revisão por segmentos e extrair quadros adicionais.";
       nextStep =
-        "Próximo passo: revisar trechos adicionais e ampliar a extração de frames.";
+        "Ampliar cobertura da análise ao longo da linha do tempo do vídeo.";
+
+      detectedSignals.push(
+        "A duração maior exige análise progressiva por trechos"
+      );
     }
 
     return Response.json({
-      attentionScore,
+      ok: true,
+      sourceType: "video",
       classification,
-      observation,
-      detectedSigns,
+      attentionLevel,
+      score,
+      summary,
+      detectedSignals,
       recommendation,
-      nextStep,
+      nextStep
     });
   } catch (error) {
+    console.error("Erro em /api/analyze-video:", error);
+
     return Response.json(
-      { error: "Erro ao analisar o vídeo." },
+      {
+        ok: false,
+        error: "Erro ao analisar o vídeo.",
+        details: error.message
+      },
       { status: 500 }
     );
   }
