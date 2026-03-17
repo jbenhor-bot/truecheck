@@ -4,12 +4,54 @@ import { useMemo, useState } from "react";
 
 export default function Page() {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState("");
+  const [contentUrl, setContentUrl] = useState("");
+  const [textContent, setTextContent] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [detectedInputType, setDetectedInputType] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
+  function detectFileKind(file) {
+    if (!file) return "";
+
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    return "file";
+  }
+
+  function detectUrlKind(url) {
+    const lower = url.toLowerCase();
+
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"];
+    const videoExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv"];
+
+    if (imageExtensions.some((ext) => lower.includes(ext))) return "image";
+    if (videoExtensions.some((ext) => lower.includes(ext))) return "video";
+
+    if (
+      lower.includes("youtube.com") ||
+      lower.includes("youtu.be") ||
+      lower.includes("tiktok.com") ||
+      lower.includes("instagram.com/reel") ||
+      lower.includes("instagram.com/p/") ||
+      lower.includes("facebook.com") ||
+      lower.includes("x.com") ||
+      lower.includes("twitter.com")
+    ) {
+      return "media";
+    }
+
+    return "url";
+  }
+
+  function inferInputType({ file, url, text }) {
+    if (file) return detectFileKind(file);
+    if (url.trim()) return detectUrlKind(url.trim());
+    if (text.trim()) return "text";
+    return "";
+  }
 
   function handleFileChange(event) {
     const file = event.target.files?.[0] || null;
@@ -20,69 +62,127 @@ export default function Page() {
     setShowTechnicalDetails(false);
 
     if (file) {
-      const localPreview = URL.createObjectURL(file);
-      setPreviewUrl(localPreview);
-      setImageUrl("");
+      const kind = detectFileKind(file);
+      setDetectedInputType(kind);
+
+      if (kind === "image" || kind === "video") {
+        const localPreview = URL.createObjectURL(file);
+        setPreviewUrl(localPreview);
+      } else {
+        setPreviewUrl("");
+      }
+
+      setContentUrl("");
+      setTextContent("");
     } else {
       setPreviewUrl("");
+      setDetectedInputType("");
     }
   }
 
   function handleUrlChange(event) {
     const value = event.target.value;
-    setImageUrl(value);
+
+    setContentUrl(value);
     setResult(null);
     setError("");
     setShowTechnicalDetails(false);
 
     if (value.trim()) {
+      const kind = detectUrlKind(value.trim());
+      setDetectedInputType(kind);
       setSelectedFile(null);
-      setPreviewUrl(value);
-    } else if (!selectedFile) {
+      setTextContent("");
+      setPreviewUrl(kind === "image" ? value.trim() : "");
+    } else {
       setPreviewUrl("");
+      setDetectedInputType(selectedFile ? detectFileKind(selectedFile) : "");
     }
   }
 
-  async function handleAnalyzeImage() {
+  function handleTextChange(event) {
+    const value = event.target.value;
+
+    setTextContent(value);
+    setResult(null);
+    setError("");
+    setShowTechnicalDetails(false);
+
+    if (value.trim()) {
+      setDetectedInputType("text");
+      setSelectedFile(null);
+      setContentUrl("");
+      setPreviewUrl("");
+    } else {
+      setDetectedInputType("");
+    }
+  }
+
+  async function handleAnalyzeContent() {
     try {
       setLoading(true);
       setError("");
       setResult(null);
       setShowTechnicalDetails(false);
 
+      const inputType = inferInputType({
+        file: selectedFile,
+        url: contentUrl,
+        text: textContent
+      });
+
+      if (!inputType) {
+        setError("Envie um arquivo, cole um link ou escreva um texto para analisar.");
+        setLoading(false);
+        return;
+      }
+
       let response;
 
       if (selectedFile) {
         const formData = new FormData();
-        formData.append("image", selectedFile);
+        formData.append("file", selectedFile);
+        formData.append("contentType", inputType);
 
         response = await fetch("/api/analyze-image", {
           method: "POST",
           body: formData
         });
-      } else if (imageUrl.trim()) {
+      } else if (contentUrl.trim()) {
         response = await fetch("/api/analyze-image", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            imageUrl: imageUrl.trim()
+            contentUrl: contentUrl.trim(),
+            imageUrl: contentUrl.trim(),
+            contentType: inputType
           })
         });
-      } else {
-        setError("Selecione uma imagem ou cole uma URL.");
-        setLoading(false);
-        return;
+      } else if (textContent.trim()) {
+        response = await fetch("/api/analyze-image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: textContent.trim(),
+            contentType: "text"
+          })
+        });
       }
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Erro ao analisar imagem.");
+        throw new Error(data.error || "Erro ao analisar conteúdo.");
       }
 
-      setResult(data);
+      setResult({
+        ...data,
+        inferredType: inputType
+      });
     } catch (err) {
       setError(err.message || "Erro inesperado.");
     } finally {
@@ -92,23 +192,25 @@ export default function Page() {
 
   function handleClear() {
     setSelectedFile(null);
-    setImageUrl("");
+    setContentUrl("");
+    setTextContent("");
     setPreviewUrl("");
+    setDetectedInputType("");
     setResult(null);
     setError("");
     setShowTechnicalDetails(false);
 
-    const fileInput = document.getElementById("image-upload-input");
+    const fileInput = document.getElementById("content-upload-input");
     if (fileInput) {
       fileInput.value = "";
     }
   }
 
   function handleReverseSearch() {
-    const targetUrl = imageUrl.trim() || previewUrl.trim();
+    const targetUrl = contentUrl.trim() || previewUrl.trim();
 
     if (!targetUrl.startsWith("http")) {
-      alert("A busca reversa precisa de uma URL pública da imagem.");
+      alert("A busca reversa precisa de uma URL pública.");
       return;
     }
 
@@ -119,10 +221,10 @@ export default function Page() {
     window.open(reverseUrl, "_blank");
   }
 
-  const riskUi = useMemo(() => {
-    const score = Number(result?.score ?? 0);
+  const scoreValue = Math.max(0, Math.min(100, Number(result?.score ?? 0)));
 
-    if (score <= 40) {
+  const riskUi = useMemo(() => {
+    if (scoreValue <= 40) {
       return {
         label: "ALTO RISCO",
         color: "#ef4444",
@@ -131,7 +233,7 @@ export default function Page() {
       };
     }
 
-    if (score <= 70) {
+    if (scoreValue <= 70) {
       return {
         label: "RISCO MODERADO",
         color: "#f59e0b",
@@ -146,9 +248,22 @@ export default function Page() {
       softBg: "rgba(34,197,94,0.12)",
       border: "rgba(34,197,94,0.35)"
     };
-  }, [result]);
+  }, [scoreValue]);
 
-  const scoreValue = Math.max(0, Math.min(100, Number(result?.score ?? 0)));
+  const inputLabel = useMemo(() => {
+    const type = result?.inferredType || detectedInputType;
+
+    if (type === "image") return "Imagem";
+    if (type === "video") return "Vídeo";
+    if (type === "text") return "Texto";
+    if (type === "media") return "Mídia";
+    if (type === "url") return "Link";
+    return "Conteúdo";
+  }, [result, detectedInputType]);
+
+  const canShowReverseSearch =
+    (contentUrl.trim().startsWith("http") && detectedInputType !== "text") ||
+    (previewUrl && previewUrl.startsWith("http"));
 
   return (
     <main
@@ -156,12 +271,12 @@ export default function Page() {
         minHeight: "100vh",
         background:
           "radial-gradient(circle at top, #10203b 0%, #07111f 45%, #040814 100%)",
-        padding: "32px 20px",
+        padding: "32px 16px",
         color: "white",
         fontFamily: "system-ui"
       }}
     >
-      <div style={{ maxWidth: "980px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1120px", margin: "0 auto" }}>
         <div style={{ marginBottom: "28px" }}>
           <div
             style={{
@@ -177,7 +292,7 @@ export default function Page() {
               marginBottom: "18px"
             }}
           >
-            TrueCheck • Verificação inicial de autenticidade
+            TrueCheck • Verificação universal de autenticidade
           </div>
 
           <h1
@@ -188,19 +303,20 @@ export default function Page() {
               fontWeight: 800
             }}
           >
-            Analise imagens com um resultado mais claro, técnico e confiável
+            Verifique a autenticidade de conteúdos digitais
           </h1>
 
           <p
             style={{
               color: "#b9c3d4",
               fontSize: "17px",
-              maxWidth: "780px",
+              maxWidth: "860px",
               lineHeight: 1.6
             }}
           >
-            Envie uma imagem ou cole uma URL para receber uma avaliação inicial
-            com score, nível de risco, sinais detectados e detalhes técnicos.
+            Envie um arquivo, cole um link ou escreva um texto. O TrueCheck
+            identifica o tipo do conteúdo e apresenta uma análise inicial com
+            score, risco, sinais detectados e recomendação.
           </p>
         </div>
 
@@ -221,9 +337,24 @@ export default function Page() {
               boxShadow: "0 10px 30px rgba(0,0,0,0.25)"
             }}
           >
-            <h2 style={{ marginBottom: "20px", fontSize: "24px" }}>
-              Verificar imagem
+            <h2 style={{ marginBottom: "18px", fontSize: "24px" }}>
+              Verificar conteúdo
             </h2>
+
+            <div
+              style={{
+                marginBottom: "16px",
+                padding: "12px 14px",
+                borderRadius: "14px",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                color: "#dce6f3",
+                fontSize: "14px"
+              }}
+            >
+              Tipo identificado:{" "}
+              <strong style={{ color: "#7dd3fc" }}>{inputLabel}</strong>
+            </div>
 
             <label
               style={{
@@ -233,13 +364,13 @@ export default function Page() {
                 fontWeight: 600
               }}
             >
-              Enviar imagem
+              Enviar arquivo
             </label>
 
             <input
-              id="image-upload-input"
+              id="content-upload-input"
               type="file"
-              accept="image/*"
+              accept="image/*,video/*,.txt,.md,.json"
               onChange={handleFileChange}
               style={{
                 display: "block",
@@ -257,14 +388,14 @@ export default function Page() {
                 fontWeight: 600
               }}
             >
-              Ou cole a URL da imagem
+              Ou cole o link do conteúdo
             </label>
 
             <input
               type="text"
-              value={imageUrl}
+              value={contentUrl}
               onChange={handleUrlChange}
-              placeholder="https://exemplo.com/imagem.jpg"
+              placeholder="https://..."
               style={{
                 width: "100%",
                 padding: "14px 14px",
@@ -278,7 +409,37 @@ export default function Page() {
               }}
             />
 
-            {previewUrl && (
+            <label
+              style={{
+                display: "block",
+                marginBottom: "10px",
+                color: "#dce6f3",
+                fontWeight: 600
+              }}
+            >
+              Ou cole o texto para análise
+            </label>
+
+            <textarea
+              value={textContent}
+              onChange={handleTextChange}
+              placeholder="Cole aqui uma legenda, notícia, mensagem ou qualquer texto que você queira verificar..."
+              rows={7}
+              style={{
+                width: "100%",
+                padding: "14px 14px",
+                marginBottom: "20px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.07)",
+                color: "white",
+                outline: "none",
+                fontSize: "15px",
+                resize: "vertical"
+              }}
+            />
+
+            {previewUrl && detectedInputType === "image" && (
               <div
                 style={{
                   marginBottom: "20px",
@@ -314,9 +475,44 @@ export default function Page() {
               </div>
             )}
 
+            {selectedFile && detectedInputType === "video" && (
+              <div
+                style={{
+                  marginBottom: "20px",
+                  borderRadius: "18px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.03)"
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    color: "#cbd5e1",
+                    fontSize: "14px"
+                  }}
+                >
+                  Prévia do vídeo
+                </div>
+
+                <div style={{ padding: "14px" }}>
+                  <video
+                    src={previewUrl}
+                    controls
+                    style={{
+                      width: "100%",
+                      maxHeight: "360px",
+                      borderRadius: "14px"
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button
-                onClick={handleAnalyzeImage}
+                onClick={handleAnalyzeContent}
                 disabled={loading}
                 style={{
                   background: loading ? "#0891b2" : "#06b6d4",
@@ -329,22 +525,24 @@ export default function Page() {
                   boxShadow: "0 8px 20px rgba(6,182,212,0.25)"
                 }}
               >
-                {loading ? "Analisando..." : "Analisar imagem"}
+                {loading ? "Analisando..." : "Verificar autenticidade"}
               </button>
 
-              <button
-                onClick={handleReverseSearch}
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  padding: "13px 18px",
-                  borderRadius: "12px",
-                  color: "white",
-                  cursor: "pointer"
-                }}
-              >
-                Buscar na internet
-              </button>
+              {canShowReverseSearch && (
+                <button
+                  onClick={handleReverseSearch}
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    padding: "13px 18px",
+                    borderRadius: "12px",
+                    color: "white",
+                    cursor: "pointer"
+                  }}
+                >
+                  Buscar na internet
+                </button>
+              )}
 
               <button
                 onClick={handleClear}
@@ -409,11 +607,11 @@ export default function Page() {
                     marginBottom: "18px"
                   }}
                 >
-                  🔍
+                  🛡️
                 </div>
 
                 <h3 style={{ fontSize: "24px", marginBottom: "10px" }}>
-                  Resultado da análise
+                  Resultado da verificação
                 </h3>
 
                 <p style={{ color: "#b9c3d4", lineHeight: 1.7 }}>
@@ -513,10 +711,7 @@ export default function Page() {
                     marginBottom: "18px"
                   }}
                 >
-                  <InfoCard
-                    label="Origem"
-                    value={result.sourceType || "—"}
-                  />
+                  <InfoCard label="Tipo" value={inputLabel} />
                   <InfoCard
                     label="Atenção"
                     value={result.attentionLevel || "—"}
@@ -704,6 +899,7 @@ export default function Page() {
                         Resumo técnico
                       </div>
 
+                      <TechItem label="Tipo" value={inputLabel} />
                       <TechItem
                         label="Classificação"
                         value={result.classification}
@@ -711,10 +907,6 @@ export default function Page() {
                       <TechItem
                         label="Nível de atenção"
                         value={result.attentionLevel}
-                      />
-                      <TechItem
-                        label="Origem"
-                        value={result.sourceType}
                       />
                       <TechItem
                         label="Pontuação"
