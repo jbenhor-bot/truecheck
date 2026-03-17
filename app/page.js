@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function Page() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,6 +9,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   function handleFileChange(event) {
     const file = event.target.files?.[0] || null;
@@ -16,6 +17,7 @@ export default function Page() {
     setSelectedFile(file);
     setResult(null);
     setError("");
+    setShowTechnicalDetails(false);
 
     if (file) {
       const localPreview = URL.createObjectURL(file);
@@ -31,6 +33,7 @@ export default function Page() {
     setImageUrl(value);
     setResult(null);
     setError("");
+    setShowTechnicalDetails(false);
 
     if (value.trim()) {
       setSelectedFile(null);
@@ -45,6 +48,7 @@ export default function Page() {
       setLoading(true);
       setError("");
       setResult(null);
+      setShowTechnicalDetails(false);
 
       let response;
 
@@ -92,6 +96,7 @@ export default function Page() {
     setPreviewUrl("");
     setResult(null);
     setError("");
+    setShowTechnicalDetails(false);
 
     const fileInput = document.getElementById("image-upload-input");
     if (fileInput) {
@@ -114,219 +119,667 @@ export default function Page() {
     window.open(reverseUrl, "_blank");
   }
 
+  const riskUi = useMemo(() => {
+    const score = Number(result?.score ?? 0);
+
+    if (score <= 40) {
+      return {
+        label: "ALTO RISCO",
+        color: "#ef4444",
+        softBg: "rgba(239,68,68,0.12)",
+        border: "rgba(239,68,68,0.35)"
+      };
+    }
+
+    if (score <= 70) {
+      return {
+        label: "RISCO MODERADO",
+        color: "#f59e0b",
+        softBg: "rgba(245,158,11,0.12)",
+        border: "rgba(245,158,11,0.35)"
+      };
+    }
+
+    return {
+      label: "BAIXO RISCO",
+      color: "#22c55e",
+      softBg: "rgba(34,197,94,0.12)",
+      border: "rgba(34,197,94,0.35)"
+    };
+  }, [result]);
+
+  const scoreValue = Math.max(0, Math.min(100, Number(result?.score ?? 0)));
+
   return (
     <main
       style={{
         minHeight: "100vh",
-        backgroundColor: "#07111f",
-        padding: "40px",
+        background:
+          "radial-gradient(circle at top, #10203b 0%, #07111f 45%, #040814 100%)",
+        padding: "32px 20px",
         color: "white",
         fontFamily: "system-ui"
       }}
     >
-      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-        <h1 style={{ fontSize: "38px", marginBottom: "10px" }}>
-          TrueCheck
-        </h1>
+      <div style={{ maxWidth: "980px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "28px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 14px",
+              borderRadius: "999px",
+              background: "rgba(6,182,212,0.12)",
+              border: "1px solid rgba(6,182,212,0.22)",
+              color: "#7dd3fc",
+              fontSize: "14px",
+              marginBottom: "18px"
+            }}
+          >
+            TrueCheck • Verificação inicial de autenticidade
+          </div>
 
-        <p style={{ color: "#b9c3d4", marginBottom: "30px" }}>
-          Verificação inicial de imagem por arquivo ou URL
-        </p>
+          <h1
+            style={{
+              fontSize: "42px",
+              lineHeight: 1.1,
+              marginBottom: "10px",
+              fontWeight: 800
+            }}
+          >
+            Analise imagens com um resultado mais claro, técnico e confiável
+          </h1>
+
+          <p
+            style={{
+              color: "#b9c3d4",
+              fontSize: "17px",
+              maxWidth: "780px",
+              lineHeight: 1.6
+            }}
+          >
+            Envie uma imagem ou cole uma URL para receber uma avaliação inicial
+            com score, nível de risco, sinais detectados e detalhes técnicos.
+          </p>
+        </div>
 
         <div
           style={{
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "16px",
-            padding: "24px",
-            background: "rgba(255,255,255,0.05)"
+            display: "grid",
+            gridTemplateColumns: "1.1fr 0.9fr",
+            gap: "22px"
           }}
         >
-          <h2 style={{ marginBottom: "20px" }}>Verificar Imagem</h2>
-
-          <label>Enviar imagem</label>
-
-          <input
-            id="image-upload-input"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            style={{ display: "block", marginTop: "10px", marginBottom: "20px" }}
-          />
-
-          <label>ou cole a URL da imagem</label>
-
-          <input
-            type="text"
-            value={imageUrl}
-            onChange={handleUrlChange}
-            placeholder="https://exemplo.com/imagem.jpg"
+          <div
             style={{
-              width: "100%",
-              padding: "10px",
-              marginTop: "10px",
-              marginBottom: "20px",
-              borderRadius: "8px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "white"
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "22px",
+              padding: "24px",
+              background: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(10px)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.25)"
             }}
-          />
+          >
+            <h2 style={{ marginBottom: "20px", fontSize: "24px" }}>
+              Verificar imagem
+            </h2>
 
-          {previewUrl && (
-            <div style={{ marginBottom: "20px" }}>
-              <p>Prévia da imagem</p>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "10px",
+                color: "#dce6f3",
+                fontWeight: 600
+              }}
+            >
+              Enviar imagem
+            </label>
 
-              <img
-                src={previewUrl}
-                alt="preview"
+            <input
+              id="image-upload-input"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              style={{
+                display: "block",
+                width: "100%",
+                marginBottom: "22px",
+                color: "#dbeafe"
+              }}
+            />
+
+            <label
+              style={{
+                display: "block",
+                marginBottom: "10px",
+                color: "#dce6f3",
+                fontWeight: 600
+              }}
+            >
+              Ou cole a URL da imagem
+            </label>
+
+            <input
+              type="text"
+              value={imageUrl}
+              onChange={handleUrlChange}
+              placeholder="https://exemplo.com/imagem.jpg"
+              style={{
+                width: "100%",
+                padding: "14px 14px",
+                marginBottom: "20px",
+                borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.07)",
+                color: "white",
+                outline: "none",
+                fontSize: "15px"
+              }}
+            />
+
+            {previewUrl && (
+              <div
                 style={{
-                  maxHeight: "350px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.1)"
+                  marginBottom: "20px",
+                  borderRadius: "18px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.03)"
                 }}
-              />
+              >
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    color: "#cbd5e1",
+                    fontSize: "14px"
+                  }}
+                >
+                  Prévia da imagem
+                </div>
+
+                <div style={{ padding: "14px", textAlign: "center" }}>
+                  <img
+                    src={previewUrl}
+                    alt="preview"
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "360px",
+                      borderRadius: "14px",
+                      objectFit: "contain"
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                onClick={handleAnalyzeImage}
+                disabled={loading}
+                style={{
+                  background: loading ? "#0891b2" : "#06b6d4",
+                  border: "none",
+                  padding: "13px 20px",
+                  borderRadius: "12px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: "#03131a",
+                  boxShadow: "0 8px 20px rgba(6,182,212,0.25)"
+                }}
+              >
+                {loading ? "Analisando..." : "Analisar imagem"}
+              </button>
+
+              <button
+                onClick={handleReverseSearch}
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  padding: "13px 18px",
+                  borderRadius: "12px",
+                  color: "white",
+                  cursor: "pointer"
+                }}
+              >
+                Buscar na internet
+              </button>
+
+              <button
+                onClick={handleClear}
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  padding: "13px 18px",
+                  borderRadius: "12px",
+                  color: "white",
+                  cursor: "pointer"
+                }}
+              >
+                Limpar
+              </button>
             </div>
-          )}
 
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              onClick={handleAnalyzeImage}
-              disabled={loading}
-              style={{
-                background: "#06b6d4",
-                border: "none",
-                padding: "12px 20px",
-                borderRadius: "10px",
-                fontWeight: "bold",
-                cursor: "pointer"
-              }}
-            >
-              {loading ? "Analisando..." : "Analisar Imagem"}
-            </button>
-
-            <button
-              onClick={handleReverseSearch}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                padding: "12px 20px",
-                borderRadius: "10px",
-                color: "white"
-              }}
-            >
-              Buscar na internet
-            </button>
-
-            <button
-              onClick={handleClear}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                padding: "12px 20px",
-                borderRadius: "10px",
-                color: "white"
-              }}
-            >
-              Limpar
-            </button>
+            {error && (
+              <div
+                style={{
+                  marginTop: "20px",
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.28)",
+                  color: "#fecaca",
+                  padding: "14px",
+                  borderRadius: "14px"
+                }}
+              >
+                {error}
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div
-              style={{
-                marginTop: "20px",
-                background: "rgba(255,0,0,0.15)",
-                padding: "12px",
-                borderRadius: "10px"
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          {result && (
-            <div
-              style={{
-                marginTop: "25px",
-                padding: "20px",
-                borderRadius: "12px",
-                background: "rgba(255,255,255,0.05)"
-              }}
-            >
-              <h3>Resultado da análise</h3>
-
-              <p><strong>Origem:</strong> {result.sourceType}</p>
-              <p><strong>Classificação:</strong> {result.classification}</p>
-              <p><strong>Nível de atenção:</strong> {result.attentionLevel}</p>
-              <p><strong>Pontuação:</strong> {result.score}</p>
-
-              {result.file && (
-                <>
-                  <p><strong>Arquivo:</strong> {result.file.name}</p>
-                  <p><strong>Tipo:</strong> {result.file.type}</p>
-                  <p><strong>Tamanho:</strong> {result.file.sizeMB} MB</p>
-                </>
-              )}
-
-              {/* EXIF */}
-              {result.exif && (
-                <div style={{ marginTop: "15px" }}>
-                  <strong>Metadados EXIF:</strong>
-
-                  <ul>
-                    {result.exif.make && (
-                      <li>Marca: {result.exif.make}</li>
-                    )}
-
-                    {result.exif.model && (
-                      <li>Modelo: {result.exif.model}</li>
-                    )}
-
-                    {result.exif.software && (
-                      <li>Software: {result.exif.software}</li>
-                    )}
-
-                    {result.exif.dateTimeOriginal && (
-                      <li>
-                        Data original:{" "}
-                        {String(result.exif.dateTimeOriginal)}
-                      </li>
-                    )}
-
-                    {result.exif.latitude &&
-                      result.exif.longitude && (
-                        <li>
-                          GPS: {result.exif.latitude},{" "}
-                          {result.exif.longitude}
-                        </li>
-                      )}
-                  </ul>
+          <div
+            style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "22px",
+              padding: "24px",
+              background: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(10px)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.25)"
+            }}
+          >
+            {!result ? (
+              <div
+                style={{
+                  minHeight: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center"
+                }}
+              >
+                <div
+                  style={{
+                    width: "74px",
+                    height: "74px",
+                    borderRadius: "18px",
+                    background: "rgba(6,182,212,0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "30px",
+                    marginBottom: "18px"
+                  }}
+                >
+                  🔍
                 </div>
-              )}
 
-              {result.detectedSignals && (
-                <div style={{ marginTop: "15px" }}>
-                  <strong>Sinais detectados:</strong>
+                <h3 style={{ fontSize: "24px", marginBottom: "10px" }}>
+                  Resultado da análise
+                </h3>
 
-                  <ul>
-                    {result.detectedSignals.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
+                <p style={{ color: "#b9c3d4", lineHeight: 1.7 }}>
+                  O score, o nível de risco, os sinais detectados e os detalhes
+                  técnicos aparecerão aqui após a análise.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    padding: "18px",
+                    borderRadius: "18px",
+                    background: riskUi.softBg,
+                    border: `1px solid ${riskUi.border}`,
+                    marginBottom: "18px"
+                  }}
+                >
+                  <div
+                    style={{
+                      color: riskUi.color,
+                      fontWeight: 800,
+                      letterSpacing: "0.04em",
+                      fontSize: "14px",
+                      marginBottom: "8px"
+                    }}
+                  >
+                    {riskUi.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "48px",
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      marginBottom: "6px"
+                    }}
+                  >
+                    {scoreValue}
+                    <span
+                      style={{
+                        fontSize: "22px",
+                        color: "#9fb0c7",
+                        marginLeft: "6px"
+                      }}
+                    >
+                      / 100
+                    </span>
+                  </div>
+
+                  <div style={{ color: "#d4deeb", fontSize: "15px" }}>
+                    {result.classification || "Classificação indisponível"}
+                  </div>
                 </div>
-              )}
 
-              <p style={{ marginTop: "10px" }}>
-                <strong>Recomendação:</strong> {result.recommendation}
-              </p>
+                <div style={{ marginBottom: "18px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                      fontSize: "14px",
+                      color: "#cbd5e1"
+                    }}
+                  >
+                    <span>Barra de risco</span>
+                    <span>{scoreValue}%</span>
+                  </div>
 
-              <p>
-                <strong>Próximo passo:</strong> {result.nextStep}
-              </p>
-            </div>
-          )}
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "14px",
+                      borderRadius: "999px",
+                      background: "rgba(255,255,255,0.08)",
+                      overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.06)"
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${scoreValue}%`,
+                        height: "100%",
+                        borderRadius: "999px",
+                        background: riskUi.color,
+                        transition: "width 0.4s ease"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                    marginBottom: "18px"
+                  }}
+                >
+                  <InfoCard
+                    label="Origem"
+                    value={result.sourceType || "—"}
+                  />
+                  <InfoCard
+                    label="Atenção"
+                    value={result.attentionLevel || "—"}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "16px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    marginBottom: "16px"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      marginBottom: "10px",
+                      fontSize: "16px"
+                    }}
+                  >
+                    Sinais detectados
+                  </div>
+
+                  {Array.isArray(result.detectedSignals) &&
+                  result.detectedSignals.length > 0 ? (
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: "18px",
+                        color: "#d9e3f0",
+                        lineHeight: 1.8
+                      }}
+                    >
+                      {result.detectedSignals.map((signal, index) => (
+                        <li key={index}>⚠ {signal}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ color: "#9fb0c7" }}>
+                      Nenhum sinal específico foi retornado.
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "16px",
+                    background: "rgba(34,197,94,0.08)",
+                    border: "1px solid rgba(34,197,94,0.18)",
+                    marginBottom: "12px"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      marginBottom: "6px",
+                      color: "#bbf7d0"
+                    }}
+                  >
+                    Recomendação
+                  </div>
+                  <div style={{ color: "#e7f7ed", lineHeight: 1.7 }}>
+                    {result.recommendation || "Sem recomendação disponível."}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "16px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    marginBottom: "14px"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      marginBottom: "6px",
+                      color: "#dbeafe"
+                    }}
+                  >
+                    Próximo passo
+                  </div>
+                  <div style={{ color: "#d9e3f0", lineHeight: 1.7 }}>
+                    {result.nextStep || "Sem próximo passo definido."}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    setShowTechnicalDetails(!showTechnicalDetails)
+                  }
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    color: "white",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontWeight: 700,
+                    marginBottom: showTechnicalDetails ? "12px" : "0"
+                  }}
+                >
+                  {showTechnicalDetails
+                    ? "Ocultar detalhes técnicos"
+                    : "Ver detalhes técnicos"}
+                </button>
+
+                {showTechnicalDetails && (
+                  <div
+                    style={{
+                      padding: "16px",
+                      borderRadius: "16px",
+                      background: "rgba(255,255,255,0.035)",
+                      border: "1px solid rgba(255,255,255,0.08)"
+                    }}
+                  >
+                    {result.file && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Arquivo
+                        </div>
+                        <TechItem label="Nome" value={result.file.name} />
+                        <TechItem label="Tipo" value={result.file.type} />
+                        <TechItem
+                          label="Tamanho"
+                          value={`${result.file.sizeMB} MB`}
+                        />
+                      </div>
+                    )}
+
+                    {result.exif && (
+                      <div style={{ marginBottom: "16px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            marginBottom: "8px",
+                            color: "#dbeafe"
+                          }}
+                        >
+                          Metadados EXIF
+                        </div>
+
+                        <TechItem label="Marca" value={result.exif.make} />
+                        <TechItem label="Modelo" value={result.exif.model} />
+                        <TechItem
+                          label="Software"
+                          value={result.exif.software}
+                        />
+                        <TechItem
+                          label="Data original"
+                          value={String(result.exif.dateTimeOriginal || "—")}
+                        />
+                        <TechItem
+                          label="GPS"
+                          value={
+                            result.exif.latitude && result.exif.longitude
+                              ? `${result.exif.latitude}, ${result.exif.longitude}`
+                              : "—"
+                          }
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          marginBottom: "8px",
+                          color: "#dbeafe"
+                        }}
+                      >
+                        Resumo técnico
+                      </div>
+
+                      <TechItem
+                        label="Classificação"
+                        value={result.classification}
+                      />
+                      <TechItem
+                        label="Nível de atenção"
+                        value={result.attentionLevel}
+                      />
+                      <TechItem
+                        label="Origem"
+                        value={result.sourceType}
+                      />
+                      <TechItem
+                        label="Pontuação"
+                        value={String(result.score)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function InfoCard({ label, value }) {
+  return (
+    <div
+      style={{
+        padding: "14px",
+        borderRadius: "14px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.07)"
+      }}
+    >
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#9fb0c7",
+          marginBottom: "6px"
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          fontSize: "16px",
+          fontWeight: 700,
+          color: "#f8fafc"
+        }}
+      >
+        {value || "—"}
+      </div>
+    </div>
+  );
+}
+
+function TechItem({ label, value }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: "10px",
+        padding: "8px 0",
+        borderBottom: "1px solid rgba(255,255,255,0.06)"
+      }}
+    >
+      <span style={{ color: "#9fb0c7" }}>{label}</span>
+      <span style={{ color: "#f8fafc", textAlign: "right" }}>
+        {value || "—"}
+      </span>
+    </div>
   );
 }
