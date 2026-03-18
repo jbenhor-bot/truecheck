@@ -28,6 +28,7 @@ export async function POST(request) {
       let baseScore = 38;
       let summary =
         "A análise atual considera sinais básicos enviados pelo navegador e ainda não executa inspeção visual profunda.";
+
       const baseSignals = [
         "Triagem inicial baseada em metadados enviados pelo navegador",
         "Análise profunda de frames ainda não executada",
@@ -63,26 +64,43 @@ export async function POST(request) {
 
       const transformationResult = detectSyntheticTransformation(fileName);
 
+      const frameAnalysis = {
+        framesAnalyzed: false,
+        frameScore: 0,
+        frameSignals: [],
+        consistencyScore: 0,
+        consistencySignals: [],
+        hasStrongSyntheticEvidence: false,
+        hasTransformationEvidence: false
+      };
+
       return Response.json(
         buildVideoResult({
           sourceType: isSocialVideoLink ? "video-url" : "video",
           baseScore,
-          frameScore: 0,
+          frameScore: frameAnalysis.frameScore,
           transformationScore: transformationResult.transformationScore,
-          consistencyScore: 0,
+          consistencyScore: frameAnalysis.consistencyScore,
           baseSignals,
-          frameSignals: [],
+          frameSignals: frameAnalysis.frameSignals,
           transformationSignals: transformationResult.detectedSignals,
-          consistencySignals: [],
+          consistencySignals: frameAnalysis.consistencySignals,
           summary,
-          framesAnalyzed: false,
+          framesAnalyzed: frameAnalysis.framesAnalyzed,
           audioAnalyzed: false,
           socialLinkDetected: isSocialVideoLink,
           hasStrongSyntheticEvidence:
-            transformationResult.hasStrongSyntheticEvidence,
+            transformationResult.hasStrongSyntheticEvidence ||
+            frameAnalysis.hasStrongSyntheticEvidence,
           hasTransformationEvidence:
-            transformationResult.hasTransformationEvidence,
+            transformationResult.hasTransformationEvidence ||
+            frameAnalysis.hasTransformationEvidence,
           extra: {
+            input: {
+              fileName: rawFileName || null,
+              fileSize,
+              duration
+            },
             technicalScope: {
               framesAnalyzed: false,
               audioAnalyzed: false,
@@ -94,7 +112,7 @@ export async function POST(request) {
       );
     }
 
-    // CASO 2: upload de vídeo (fase 1 ainda sem extração real de frames)
+    // CASO 2: upload de vídeo (fase atual ainda sem extração real de frames)
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const video = formData.get("video");
@@ -110,7 +128,7 @@ export async function POST(request) {
       }
 
       const sizeInBytes = video.size || 0;
-      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+      const sizeMB = Number((sizeInBytes / (1024 * 1024)).toFixed(2));
       const fileName = String(video.name || "").toLowerCase();
 
       const maxSizeMB = 60;
@@ -128,6 +146,7 @@ export async function POST(request) {
       let baseScore = 44;
       let summary =
         "O vídeo foi enviado por upload e passou por triagem inicial de arquivo. A análise profunda de frames ainda será adicionada nas próximas etapas.";
+
       const baseSignals = [
         "Vídeo recebido com sucesso por upload",
         "Triagem inicial de arquivo executada",
@@ -143,25 +162,37 @@ export async function POST(request) {
 
       const transformationResult = detectSyntheticTransformation(fileName);
 
+      const frameAnalysis = {
+        framesAnalyzed: false,
+        frameScore: 0,
+        frameSignals: [],
+        consistencyScore: 0,
+        consistencySignals: [],
+        hasStrongSyntheticEvidence: false,
+        hasTransformationEvidence: false
+      };
+
       return Response.json(
         buildVideoResult({
           sourceType: "video-file",
           baseScore,
-          frameScore: 0,
+          frameScore: frameAnalysis.frameScore,
           transformationScore: transformationResult.transformationScore,
-          consistencyScore: 0,
+          consistencyScore: frameAnalysis.consistencyScore,
           baseSignals,
-          frameSignals: [],
+          frameSignals: frameAnalysis.frameSignals,
           transformationSignals: transformationResult.detectedSignals,
-          consistencySignals: [],
+          consistencySignals: frameAnalysis.consistencySignals,
           summary,
-          framesAnalyzed: false,
+          framesAnalyzed: frameAnalysis.framesAnalyzed,
           audioAnalyzed: false,
           socialLinkDetected: false,
           hasStrongSyntheticEvidence:
-            transformationResult.hasStrongSyntheticEvidence,
+            transformationResult.hasStrongSyntheticEvidence ||
+            frameAnalysis.hasStrongSyntheticEvidence,
           hasTransformationEvidence:
-            transformationResult.hasTransformationEvidence,
+            transformationResult.hasTransformationEvidence ||
+            frameAnalysis.hasTransformationEvidence,
           extra: {
             file: {
               name: video.name,
